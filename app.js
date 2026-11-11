@@ -343,6 +343,57 @@ async function handlePatientTakeDose(med) {
 
 function renderHelperView() {
     el.helperLogList.textContent = '';
+    const helperMissedList = document.getElementById('helperMissedList');
+    if (helperMissedList) helperMissedList.textContent = '';
+
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    // Calculs statistiques
+    const totalLogs = AppState.logs.length;
+    const takenLogs = AppState.logs.filter(l => l.action === 'taken');
+    const snoozedLogs = AppState.logs.filter(l => l.action === 'snoozed');
+    const missedLogs = AppState.logs.filter(l => l.action === 'missed');
+
+    const rate = totalLogs > 0 ? Math.round((takenLogs.length / totalLogs) * 100) : 100;
+    
+    el.statAdherence.textContent = `${rate}%`;
+    el.statTaken.textContent = takenLogs.length;
+    if (el.statSnoozed) el.statSnoozed.textContent = snoozedLogs.length;
+    if (el.statMissed) el.statMissed.textContent = missedLogs.length;
+
+    // Rendu de la sous-liste des alertes manquées/ignorées du jour
+    const todayIssues = AppState.logs.filter(l => 
+        (l.action === 'missed' || l.action === 'snoozed') && 
+        l.timestamp.startsWith(todayStr)
+    );
+
+    if (helperMissedList) {
+        if (todayIssues.length === 0) {
+            const okMsg = document.createElement('p');
+            okMsg.className = "text-slate-500 dark:text-slate-400 text-xs";
+            okMsg.textContent = "Aucune anomalie signalée aujourd'hui.";
+            helperMissedList.appendChild(okMsg);
+        } else {
+            todayIssues.forEach(issue => {
+                const badge = document.createElement('div');
+                badge.className = "p-2 rounded bg-white dark:bg-slate-900 border border-rose-200 dark:border-rose-900 flex justify-between items-center";
+                
+                const text = document.createElement('span');
+                text.className = "font-medium text-rose-700 dark:text-rose-300";
+                text.textContent = `• ${issue.medName} (${issue.action === 'snoozed' ? 'Repoussé' : 'Manqué'})`;
+
+                const time = document.createElement('span');
+                time.className = "text-slate-400 font-mono text-[10px]";
+                time.textContent = new Date(issue.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+                badge.appendChild(text);
+                badge.appendChild(time);
+                helperMissedList.appendChild(badge);
+            });
+        }
+    }
+
+    // Rendu de l'historique complet
     if (AppState.logs.length === 0) {
         const empty = document.createElement('p');
         empty.className = "text-slate-400 text-center py-4 text-xs";
@@ -356,7 +407,11 @@ function renderHelperView() {
         item.className = "p-2 rounded-lg bg-slate-100 dark:bg-slate-700/50 flex justify-between items-center text-xs";
 
         const label = document.createElement('span');
-        label.textContent = `${log.medName} - ${log.action === 'taken' ? 'Pris' : 'Ignoré'}`;
+        let actionText = 'Pris';
+        if (log.action === 'snoozed') actionText = 'Repoussé';
+        if (log.action === 'missed') actionText = 'Manqué';
+        
+        label.textContent = `${log.medName} - ${actionText}`;
         
         const time = document.createElement('span');
         time.className = "text-slate-400 font-mono";
@@ -366,14 +421,7 @@ function renderHelperView() {
         item.appendChild(time);
         el.helperLogList.appendChild(item);
     });
-
-    const total = AppState.logs.length;
-    const taken = AppState.logs.filter(l => l.action === 'taken').length;
-    const rate = total > 0 ? Math.round((taken / total) * 100) : 100;
-    el.statAdherence.textContent = `${rate}%`;
-    el.statTaken.textContent = taken;
 }
-
 function renderDoctorView() {
     el.doctorMedList.textContent = '';
     if (!AppState.isUnlocked) {
