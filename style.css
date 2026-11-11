@@ -1,0 +1,25 @@
+/* Accessibility Font Zoom Rules */
+.font-zoom-active body, 
+.font-zoom-active p, 
+.font-zoom-active span, 
+.font-zoom-active button, 
+.font-zoom-active input,
+.font-zoom-active label,
+.font-zoom-active td,
+.font-zoom-active th {
+    font-size: 1.25rem !important;
+    line-height: 1.75rem !important;
+}
+
+.font-zoom-active .med-card {
+    padding: 1.75rem !important;
+}
+
+.font-zoom-active .med-title {
+    font-size: 2.25rem !important;
+    line-height: 2.5rem !important;
+}
+
+.med-title {
+    transition: font-size 0.2s ease;
+}
