@@ -1,960 +1,708 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="fr" class="h-full">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Pilulier Maman - Multi-Rôle & Sécurisé</title>
-  <!-- Tailwind CSS -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <!-- FontAwesome Icons -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <!-- Google Fonts: Inter -->
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <style>
-    body {
-      font-family: 'Inter', sans-serif;
-      background-color: #f1f5f9;
-      -webkit-tap-highlight-color: transparent;
-      transition: background-color 0.3s ease, color 0.3s ease;
-    }
-    /* Dynamic Dark Mode Theme Overrides */
-    body.dark-theme {
-      background-color: #0f172a;
-      color: #f8fafc;
-    }
-    body.dark-theme header {
-      background-color: #020617;
-      border-color: #1e293b;
-    }
-    body.dark-theme .bg-white {
-      background-color: #1e293b !important;
-      color: #f8fafc !important;
-      border-color: #334155 !important;
-    }
-    body.dark-theme .bg-slate-50 {
-      background-color: #0f172a !important;
-      border-color: #334155 !important;
-      color: #cbd5e1 !important;
-    }
-    body.dark-theme .text-slate-800, body.dark-theme .text-slate-900 {
-      color: #f8fafc !important;
-    }
-    body.dark-theme .text-slate-500, body.dark-theme .text-slate-600 {
-      color: #94a3b8 !important;
-    }
-
-    /* Accessibility Font Size Overrides: ENLARGE ONLY MEDICATION NAMES AND CONTAINERS */
-    body.large-font-theme .med-title {
-      font-size: 1.75rem !important; /* 28px - Enlarge medicine titles */
-      line-height: 2.25rem !important;
-    }
-    body.large-font-theme #todayDoseList > div,
-    body.large-font-theme #allMedsList > div {
-      padding: 1.75rem !important; /* Enlarge container cards */
-      min-height: 120px;
-    }
-
-    .custom-scrollbar::-webkit-scrollbar {
-      width: 6px;
-    }
-    .custom-scrollbar::-webkit-scrollbar-track {
-      background: #f1f5f9;
-    }
-    .custom-scrollbar::-webkit-scrollbar-thumb {
-      background: #cbd5e1;
-      border-radius: 4px;
-    }
-    @keyframes pulse-alarm {
-      0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(225, 29, 72, 0.7); }
-      50% { transform: scale(1.03); box-shadow: 0 0 25px 10px rgba(225, 29, 72, 0); }
-    }
-    .animate-alarm {
-      animation: pulse-alarm 1.2s infinite;
-    }
-  </style>
-</head>
-<body class="text-slate-800 min-h-screen flex flex-col pb-16">
-
-  <!-- EN-TÊTE PRINCIPAL ET SELECTIONS DES RÔLES -->
-  <header class="bg-slate-900 text-white shadow-lg sticky top-0 z-30 border-b border-slate-800">
-    <div class="max-w-5xl mx-auto px-4 py-3 flex flex-wrap justify-between items-center gap-3">
-      
-      <!-- LOGO & HEURE -->
-      <div class="flex items-center gap-3">
-        <div class="bg-teal-500 text-slate-900 p-2.5 rounded-2xl flex items-center justify-center font-extrabold shadow-md">
-          <i class="fa-solid fa-heart-pulse text-2xl"></i>
-        </div>
-        <div>
-          <div class="flex items-center gap-2">
-            <h1 class="text-lg font-black tracking-tight">Pilulier Maman</h1>
-            <span id="roleBadge" class="bg-rose-500/20 text-rose-300 text-[10px] font-bold px-2 py-0.5 rounded-full border border-rose-500/30">
-              Mode Maman
-            </span>
-          </div>
-          <p class="text-xs text-slate-400 font-medium" id="roleSubtitle">Interface Simplifiée & Rappels Intelligents</p>
-        </div>
-      </div>
-
-      <!-- HORLOGE ET SÉLECTEUR DE RÔLE -->
-      <div class="flex items-center gap-3 ml-auto sm:ml-0">
-        <div class="text-right hidden sm:block">
-          <div id="liveClock" class="text-base font-bold tracking-wider font-mono text-teal-400">00:00</div>
-          <div id="liveDate" class="text-[10px] text-slate-400 capitalize">--</div>
-        </div>
-
-        <!-- ACCESSIBILITÉ & COMMUTATEURS DE THÈME / TAILLE -->
-        <div class="flex items-center gap-1.5 bg-slate-800 p-1 rounded-xl border border-slate-700">
-          <!-- BOUTON TAILLE DE POLICE (GRANDES/PETITES) -->
-          <button onclick="toggleFontSize()" id="btnFontToggle" class="p-1.5 rounded-lg text-slate-300 hover:text-white transition flex items-center gap-1 font-bold text-xs" title="Changer la taille du texte">
-            <i class="fa-solid fa-text-height"></i>
-            <span id="fontToggleLabel" class="text-[10px] font-black">A+</span>
-          </button>
-          
-          <!-- BOUTON CLAIR / SOMBRE -->
-          <button onclick="toggleTheme()" id="btnThemeToggle" class="p-1.5 rounded-lg text-amber-400 hover:text-amber-300 transition" title="Activer le mode Sombre / Clair">
-            <i id="themeIcon" class="fa-solid fa-moon text-xs"></i>
-          </button>
-        </div>
-
-        <!-- SELECTEUR RÔLE (AVEC VERROU HIPAA) -->
-        <div class="bg-slate-800 p-1 rounded-xl border border-slate-700 flex text-xs font-bold">
-          <button onclick="requestRoleSwitch('patient')" id="btnRolePatient" class="px-3 py-1.5 rounded-lg bg-teal-500 text-slate-900 shadow font-extrabold transition">
-            <i class="fa-solid fa-user-large mr-1"></i> Maman
-          </button>
-          <button onclick="requestRoleSwitch('helper')" id="btnRoleHelper" class="px-3 py-1.5 rounded-lg text-slate-300 hover:text-white transition">
-            <i class="fa-solid fa-hand-holding-heart mr-1"></i> Aidant
-          </button>
-          <button onclick="requestRoleSwitch('doctor')" id="btnRoleDoctor" class="px-3 py-1.5 rounded-lg text-slate-300 hover:text-white transition">
-            <i class="fa-solid fa-user-md mr-1"></i> Médecin
-          </button>
-        </div>
-
-        <!-- BOUTON VERROUILLAGE SÉCURITÉ -->
-        <button onclick="lockSystem()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 p-2 rounded-xl text-xs border border-slate-700 transition" title="Verrouiller la session (HIPAA)">
-          <i class="fa-solid fa-lock text-amber-400"></i>
-        </button>
-      </div>
-
-    </div>
-  </header>
-
-  <!-- CONTENU PRINCIPAL -->
-  <main class="max-w-5xl mx-auto px-4 mt-5 flex-grow w-full space-y-5">
-
-    <!-- BANNIÈRE CONFORMITÉ HIPAA ET PROTECTION -->
-    <div id="hipaaBanner" class="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-900 flex items-center justify-between gap-2 shadow-sm">
-      <div class="flex items-center gap-2">
-        <i class="fa-solid fa-shield-halved text-amber-600 text-base"></i>
-        <span><strong>Protection des données Santé (Conformité HIPAA/RGPD):</strong> Les données médicales sont chiffrées localement et protégées par PIN.</span>
-      </div>
-      <button onclick="document.getElementById('hipaaBanner').remove()" class="text-amber-500 hover:text-amber-800 font-bold text-xs"><i class="fa-solid fa-xmark"></i></button>
-    </div>
-
-    <!-- AVANCEMENT ET STATISTIQUES RAPIDES -->
-    <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 flex flex-col md:flex-row items-center justify-between gap-6">
-      <div class="space-y-1 text-center md:text-left w-full md:w-auto">
-        <h2 class="text-lg font-extrabold text-slate-800">Progression du Traitement</h2>
-        <p class="text-xs text-slate-500" id="progressSummary">Calcul de la prise du jour...</p>
-        <div class="pt-1 flex flex-wrap gap-2 justify-center md:justify-start text-xs font-semibold">
-          <span class="bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-lg border border-emerald-200" id="takenCount">0 Pris</span>
-          <span class="bg-amber-50 text-amber-700 px-2.5 py-1 rounded-lg border border-amber-200" id="pendingCount">0 En attente</span>
-          <span class="bg-rose-50 text-rose-700 px-2.5 py-1 rounded-lg border border-rose-200" id="skippedCount">0 Ignorés</span>
-        </div>
-      </div>
-
-      <!-- Barre de progression fluidifiée -->
-      <div class="w-full md:w-1/2 space-y-2">
-        <div class="flex justify-between text-xs font-black text-slate-700">
-          <span>Observance Quotidienne</span>
-          <span id="progressPercentage" class="text-teal-700">0%</span>
-        </div>
-        <div class="w-full bg-slate-100 rounded-full h-4 overflow-hidden border border-slate-200 p-0.5">
-          <div id="progressBar" class="bg-gradient-to-r from-teal-500 to-emerald-500 h-full w-0 transition-all duration-500 rounded-full"></div>
-        </div>
-        <p class="text-[11px] text-slate-400 text-right">Mise à jour en temps réel</p>
-      </div>
-    </div>
-
-    <!-- NAVIGATION PRINCIPALE ONGLET -->
-    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-      
-      <div class="flex border-b border-slate-200 bg-slate-50 overflow-x-auto text-xs sm:text-sm">
-        <button id="tabToday" onclick="switchTab('today')" class="flex-1 py-3.5 px-4 font-extrabold text-teal-700 border-b-2 border-teal-600 flex items-center justify-center gap-2 bg-white transition whitespace-nowrap">
-          <i class="fa-solid fa-calendar-check"></i> Aujourd'hui
-        </button>
-        <button id="tabMeds" onclick="switchTab('meds')" class="flex-1 py-3.5 px-4 font-bold text-slate-500 hover:text-slate-700 flex items-center justify-center gap-2 transition whitespace-nowrap">
-          <i class="fa-solid fa-capsules"></i> Médicaments <span id="medBadgeCount" class="bg-slate-200 text-slate-700 rounded-full text-[10px] px-1.5 py-0.2">0</span>
-        </button>
-        <button id="tabStats" onclick="switchTab('stats')" class="flex-1 py-3.5 px-4 font-bold text-slate-500 hover:text-slate-700 flex items-center justify-center gap-2 transition whitespace-nowrap">
-          <i class="fa-solid fa-chart-line"></i> Statistiques & Prises
-        </button>
-        <button id="tabHistory" onclick="switchTab('history')" class="flex-1 py-3.5 px-4 font-bold text-slate-500 hover:text-slate-700 flex items-center justify-center gap-2 transition whitespace-nowrap">
-          <i class="fa-solid fa-clock-rotate-left"></i> Journal Aidant
-        </button>
-      </div>
-
-      <!-- CONTENU ONGLET 1: AUJOURD'HUI -->
-      <div id="panelToday" class="p-4 sm:p-6 space-y-4">
-        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-          <div>
-            <h3 class="text-base font-extrabold text-slate-800 flex items-center gap-2">
-              <i class="fa-solid fa-bell text-amber-500"></i> Programme des Médicaments
-            </h3>
-            <p class="text-xs text-slate-500">Prises prévues pour la journée</p>
-          </div>
-          <button id="doctorAddBtn" onclick="openAddMedModal()" class="w-full sm:w-auto bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-md transition flex items-center justify-center gap-2">
-            <i class="fa-solid fa-plus-circle"></i> Nouveau Traitement (Médecin)
-          </button>
-        </div>
-
-        <div id="todayDoseList" class="space-y-3">
-          <!-- Injecté dynamiquement -->
-        </div>
-      </div>
-
-      <!-- CONTENU ONGLET 2: ARMOIRE DE MÉDICAMENTS (GESTION MÉDECIN / AIDANT) -->
-      <div id="panelMeds" class="p-4 sm:p-6 space-y-4 hidden">
-        <div class="flex justify-between items-center flex-wrap gap-2">
-          <div>
-            <h3 class="text-base font-extrabold text-slate-800">Gestion des Médicaments & Ordonnances</h3>
-            <p class="text-xs text-slate-500">Ajout, modification et paramétrage des alarmes</p>
-          </div>
-          <button id="doctorAddBtn2" onclick="openAddMedModal()" class="bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow transition flex items-center gap-2">
-            <i class="fa-solid fa-plus"></i> Ajouter Un Médicament
-          </button>
-        </div>
-        
-        <div id="allMedsList" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <!-- Cartes Médicaments -->
-        </div>
-      </div>
-
-      <!-- CONTENU ONGLET 3: STATISTIQUES DE FRÉQUENCE ET TEMPS DE PRISE -->
-      <div id="panelStats" class="p-4 sm:p-6 space-y-6 hidden">
-        <div>
-          <h3 class="text-base font-extrabold text-slate-800">Statistiques & Fréquence d'Observance</h3>
-          <p class="text-xs text-slate-500">Analyse du respect des heures de prise pour le médecin traitant</p>
-        </div>
-
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200 text-center">
-            <div class="text-xs font-bold text-slate-500">Ponctualité Globale</div>
-            <div id="statPunctuality" class="text-2xl font-black text-teal-600 mt-1">100%</div>
-            <div class="text-[10px] text-slate-400">Moins de 15 min de retard</div>
-          </div>
-          <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200 text-center">
-            <div class="text-xs font-bold text-slate-500">Doses Manquées (7j)</div>
-            <div id="statMissed" class="text-2xl font-black text-rose-500 mt-1">0</div>
-            <div class="text-[10px] text-slate-400">Total ignoré ou expiré</div>
-          </div>
-          <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200 text-center">
-            <div class="text-xs font-bold text-slate-500">Délai Moyen de Prise</div>
-            <div id="statAvgDelay" class="text-2xl font-black text-amber-500 mt-1">4 min</div>
-            <div class="text-[10px] text-slate-400">Après le premier son</div>
-          </div>
-        </div>
-
-        <!-- Graphique / Répartition par moment de journée -->
-        <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
-          <h4 class="text-xs font-extrabold text-slate-700 uppercase tracking-wider">Répartition de l'Observance par Horaires</h4>
-          <div class="space-y-2 text-xs">
-            <div>
-              <div class="flex justify-between font-semibold mb-1">
-                <span>Matin (06h00 - 11h59)</span>
-                <span id="statMorning" class="text-teal-700">100%</span>
-              </div>
-              <div class="w-full bg-slate-200 rounded-full h-2">
-                <div id="barMorning" class="bg-teal-500 h-2 rounded-full w-full"></div>
-              </div>
-            </div>
-            <div>
-              <div class="flex justify-between font-semibold mb-1">
-                <span>Midi (12h00 - 14h59)</span>
-                <span id="statNoon" class="text-teal-700">100%</span>
-              </div>
-              <div class="w-full bg-slate-200 rounded-full h-2">
-                <div id="barNoon" class="bg-teal-500 h-2 rounded-full w-full"></div>
-              </div>
-            </div>
-            <div>
-              <div class="flex justify-between font-semibold mb-1">
-                <span>Soir (18h00 - 23h59)</span>
-                <span id="statEvening" class="text-teal-700">100%</span>
-              </div>
-              <div class="w-full bg-slate-200 rounded-full h-2">
-                <div id="barEvening" class="bg-teal-500 h-2 rounded-full w-full"></div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- CONTENU ONGLET 4: HISTORIQUE & JOURNAL AIDANT -->
-      <div id="panelHistory" class="p-4 sm:p-6 space-y-4 hidden">
-        <div class="flex justify-between items-center flex-wrap gap-2">
-          <h3 class="text-base font-extrabold text-slate-800">Journal d'Observance Horodaté</h3>
-          <button onclick="clearHistory()" class="text-xs text-rose-600 hover:text-rose-800 font-bold flex items-center gap-1">
-            <i class="fa-solid fa-trash-can"></i> Réinitialiser l'historique
-          </button>
-        </div>
-        <div class="overflow-x-auto">
-          <table class="w-full text-left text-xs text-slate-600">
-            <thead class="bg-slate-100 text-slate-700 uppercase font-extrabold text-[10px]">
-              <tr>
-                <th class="py-3 px-3 rounded-l-lg">Date & Heure</th>
-                <th class="py-3 px-3">Médicament</th>
-                <th class="py-3 px-3">Dosage</th>
-                <th class="py-3 px-3">Statut</th>
-                <th class="py-3 px-3 rounded-r-lg">Note</th>
-              </tr>
-            </thead>
-            <tbody id="historyTableBody" class="divide-y divide-slate-100">
-              <!-- Logs dynamiques -->
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-    </div>
-
-  </main>
-
-  <!-- MODAL DE VERROUILLAGE SÉCURITÉ (HIPAA PIN LOCK) -->
-  <div id="pinModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center hidden p-4">
-    <div class="bg-white rounded-3xl max-w-xs w-full p-6 text-center space-y-4 shadow-2xl border border-slate-100">
-      <div class="w-14 h-14 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto text-2xl shadow-inner">
-        <i class="fa-solid fa-lock"></i>
-      </div>
-      <div>
-        <h3 class="text-base font-extrabold text-slate-800">Code PIN de Sécurité</h3>
-        <p class="text-xs text-slate-500 mt-1" id="pinModalSubtext">Entrez le PIN pour accéder aux modes Aidant / Médecin</p>
-      </div>
-
-      <input type="password" id="pinInput" maxlength="4" placeholder="••••" class="w-full text-center text-2xl font-mono tracking-widest p-3 border-2 border-slate-300 rounded-2xl focus:border-teal-500 outline-none">
-      
-      <p id="pinError" class="text-xs font-bold text-rose-500 hidden">Code PIN incorrect!</p>
-
-      <div class="flex gap-2">
-        <button onclick="closePinModal()" class="w-1/2 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs">Annuler</button>
-        <button onclick="verifyPinSubmit()" class="w-1/2 py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-xl text-xs shadow-md">Valider</button>
-      </div>
-      <p class="text-[10px] text-slate-400">PIN par défaut: <span class="font-bold text-slate-600">1234</span></p>
-    </div>
-  </div>
-
-  <!-- MODAL RAPPEL SONORE / ALARME AVEC AMPLIFICATION TOUTES LES 5 MIN -->
-  <div id="alarmModal" class="fixed inset-0 bg-rose-950/85 backdrop-blur-md z-50 flex items-center justify-center hidden p-4">
-    <div class="bg-white rounded-3xl max-w-md w-full p-6 text-center space-y-4 shadow-2xl border-4 border-rose-500 animate-alarm">
-      
-      <div class="flex items-center justify-between text-xs font-bold text-rose-600 bg-rose-50 px-3 py-1.5 rounded-full border border-rose-200">
-        <span class="flex items-center gap-1.5"><i class="fa-solid fa-volume-high animate-bounce"></i> Alarme Évolutive</span>
-        <span id="alarmLevelText">Niveau Son: 1/5</span>
-      </div>
-
-      <div class="w-20 h-20 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center mx-auto text-4xl shadow-inner">
-        <i class="fa-solid fa-bell animate-pulse"></i>
-      </div>
-      
-      <div>
-        <h3 class="text-xl font-black text-slate-900">Maman, c'est l'heure du médicament !</h3>
-        <p class="text-xs text-slate-500 mt-1">L'alarme sonne de plus en plus fort toutes les 5 minutes jusqu'à confirmation.</p>
-      </div>
-
-      <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200 text-left space-y-1.5">
-        <div id="alarmMedName" class="text-lg font-black text-slate-900">Médicament</div>
-        <div id="alarmMedDosage" class="text-xs font-extrabold text-teal-700">Dosage</div>
-        <div id="alarmMedInstructions" class="text-xs text-slate-600 italic bg-white p-2 rounded-lg border border-slate-100">Instructions</div>
-      </div>
-
-      <div class="flex flex-col gap-2.5 pt-2">
-        <button id="alarmTakeBtn" class="w-full py-4 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-lg rounded-2xl shadow-xl transition flex items-center justify-center gap-2">
-          <i class="fa-solid fa-circle-check text-2xl"></i> J'AI PRIS MON MÉDICAMENT
-        </button>
-        <button id="alarmSnoozeBtn" class="w-full py-3 bg-amber-500 hover:bg-amber-600 text-white font-extrabold text-xs rounded-xl transition flex items-center justify-center gap-2">
-          <i class="fa-solid fa-clock"></i> RAPPELER DANS 5 MINUTES (SNOOZE)
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- FORMULAIRE DE GESTION MÉDICAMENT (MODAL SÉCURISÉ) -->
-  <div id="medModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
-    <div class="bg-white rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto custom-scrollbar">
-      <div class="flex justify-between items-center border-b pb-3">
-        <h3 id="modalTitle" class="text-base font-extrabold text-slate-800">Prescrire / Modifier un médicament</h3>
-        <button onclick="closeMedModal()" class="text-slate-400 hover:text-slate-600 p-1 text-lg">
-          <i class="fa-solid fa-xmark"></i>
-        </button>
-      </div>
-
-      <form id="medForm" onsubmit="handleFormSubmit(event)" class="space-y-3">
-        <input type="hidden" id="medId">
-
-        <div>
-          <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Nom du Médicament *</label>
-          <input type="text" id="medName" required placeholder="ex: Lisinopril, Doliprane" class="w-full border border-slate-300 rounded-xl p-2.5 text-xs focus:ring-2 focus:ring-teal-500 outline-none">
-        </div>
-
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Dosage *</label>
-            <input type="text" id="medDosage" required placeholder="ex: 10mg, 1 gélule" class="w-full border border-slate-300 rounded-xl p-2.5 text-xs focus:ring-2 focus:ring-teal-500 outline-none">
-          </div>
-          <div>
-            <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Icône</label>
-            <select id="medIcon" class="w-full border border-slate-300 rounded-xl p-2.5 text-xs focus:ring-2 focus:ring-teal-500 outline-none bg-white">
-              <option value="fa-pill text-blue-500">🔵 Pilule Bleue</option>
-              <option value="fa-capsules text-rose-500">🔴 Gélule Rouge</option>
-              <option value="fa-tablets text-amber-500">🟡 Comprimé Jaune</option>
-              <option value="fa-prescription-bottle-medical text-teal-600">🟢 Flacon / Sirop</option>
-              <option value="fa-heart-pulse text-red-600">💖 Cardiologie</option>
-            </select>
-          </div>
-        </div>
-
-        <div>
-          <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Heures des Rappels (Séparées par des virgules) *</label>
-          <input type="text" id="medTimes" required placeholder="08:00, 12:30, 19:00" class="w-full border border-slate-300 rounded-xl p-2.5 text-xs focus:ring-2 focus:ring-teal-500 outline-none">
-        </div>
-
-        <div>
-          <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Instructions Médicales</label>
-          <input type="text" id="medInstructions" placeholder="ex: À prendre au milieu du repas" class="w-full border border-slate-300 rounded-xl p-2.5 text-xs focus:ring-2 focus:ring-teal-500 outline-none">
-        </div>
-
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Stock de départ</label>
-            <input type="number" id="medStock" placeholder="30" class="w-full border border-slate-300 rounded-xl p-2.5 text-xs focus:ring-2 focus:ring-teal-500 outline-none">
-          </div>
-          <div>
-            <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Seuil Alerte Renouvellement</label>
-            <input type="number" id="medRefill" placeholder="5" class="w-full border border-slate-300 rounded-xl p-2.5 text-xs focus:ring-2 focus:ring-teal-500 outline-none">
-          </div>
-        </div>
-
-        <div class="pt-2 flex gap-3">
-          <button type="button" onclick="closeMedModal()" class="w-1/2 py-2.5 border border-slate-300 font-bold text-slate-600 rounded-xl text-xs">Annuler</button>
-          <button type="submit" class="w-1/2 py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-extrabold rounded-xl text-xs shadow-md">Enregistrer la Prescription</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <!-- SCRIPT JS COMPLET -->
-  <script>
-    // ETAT SYSTEME ET CONFIGURATION
-    const SECURITY_PIN = '1234';
-    let currentRole = 'patient'; // 'patient', 'helper', 'doctor'
-    let pendingRoleTarget = null;
-    let isDarkMode = localStorage.getItem('mom_dark_mode') === 'true';
-    let isLargeFont = localStorage.getItem('mom_large_font') === 'true';
-
-    const DEFAULT_MEDICATIONS = [
-      {
-        id: 'med-1',
-        name: 'Lisinopril',
-        dosage: '10mg',
-        icon: 'fa-pill text-blue-500',
-        times: ['08:00'],
-        instructions: 'À prendre le matin au petit-déjeuner.',
-        stock: 28,
-        refill: 5
-      },
-      {
-        id: 'med-2',
-        name: 'Metformine',
-        dosage: '500mg',
-        icon: 'fa-tablets text-amber-500',
-        times: ['08:00', '19:00'],
-        instructions: 'Pendant les repas principaux.',
-        stock: 45,
-        refill: 10
-      }
-    ];
-
-    let medications = JSON.parse(localStorage.getItem('mom_meds_v2')) || DEFAULT_MEDICATIONS;
-    let historyLogs = JSON.parse(localStorage.getItem('mom_med_logs_v2')) || [];
-    let dailyRecords = JSON.parse(localStorage.getItem('mom_daily_records_v2')) || {};
-
-    let audioContext = null;
-    let alarmVolumeLevel = 1; // De 1 à 5
-    let alarmTimerInterval = null;
-    let currentActiveAlarm = null;
-
-    const getTodayKey = () => new Date().toISOString().split('T')[0];
-
-    window.onload = function() {
-      initClock();
-      applyThemeSettings();
-      updateRoleUI();
-      renderDashboard();
-      checkUpcomingAlarms();
-      setInterval(checkUpcomingAlarms, 15000); // Check toutes les 15 sec
-    };
-
-    // GESTION DU THÈME CLAIR / SOMBRE ET DES TAILLES DE POLICE
-    function applyThemeSettings() {
-      if (isDarkMode) {
-        document.body.classList.add('dark-theme');
-        document.getElementById('themeIcon').className = 'fa-solid fa-sun text-amber-300 text-xs';
-      } else {
-        document.body.classList.remove('dark-theme');
-        document.getElementById('themeIcon').className = 'fa-solid fa-moon text-amber-400 text-xs';
-      }
-
-      if (isLargeFont) {
-        document.body.classList.add('large-font-theme');
-        document.getElementById('fontToggleLabel').textContent = 'A-';
-      } else {
-        document.body.classList.remove('large-font-theme');
-        document.getElementById('fontToggleLabel').textContent = 'A+';
-      }
-    }
-
-    function toggleTheme() {
-      isDarkMode = !isDarkMode;
-      localStorage.setItem('mom_dark_mode', isDarkMode);
-      applyThemeSettings();
-    }
-
-    function toggleFontSize() {
-      isLargeFont = !isLargeFont;
-      localStorage.setItem('mom_large_font', isLargeFont);
-      applyThemeSettings();
-    }
-
-    function initClock() {
-      function updateClock() {
-        const now = new Date();
-        document.getElementById('liveClock').textContent = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-        document.getElementById('liveDate').textContent = now.toLocaleDateString('fr-FR', { weekday: 'short', month: 'short', day: 'numeric' });
-      }
-      updateClock();
-      setInterval(updateClock, 1000);
-    }
-
-    // VERROUILLAGE SÉCURITÉ / RÔLES (HIPAA)
-    function requestRoleSwitch(role) {
-      if (role === currentRole) return;
-      if (role === 'patient') {
-        currentRole = 'patient';
-        updateRoleUI();
-        return;
-      }
-
-      // Pour Aidant et Médecin: demande du code PIN HIPAA
-      pendingRoleTarget = role;
-      document.getElementById('pinInput').value = '';
-      document.getElementById('pinError').classList.add('hidden');
-      document.getElementById('pinModalSubtext').textContent = `Accès restreint (${role === 'doctor' ? 'Médecin' : 'Aidant'}). Entrez le code PIN.`;
-      document.getElementById('pinModal').classList.remove('hidden');
-    }
-
-    function verifyPinSubmit() {
-      const enteredPin = document.getElementById('pinInput').value;
-      if (enteredPin === SECURITY_PIN) {
-        currentRole = pendingRoleTarget;
-        closePinModal();
-        updateRoleUI();
-      } else {
-        document.getElementById('pinError').classList.remove('hidden');
-      }
-    }
-
-    function closePinModal() {
-      document.getElementById('pinModal').classList.add('hidden');
-      pendingRoleTarget = null;
-    }
-
-    function lockSystem() {
-      currentRole = 'patient';
-      updateRoleUI();
-    }
-
-    function updateRoleUI() {
-      const badge = document.getElementById('roleBadge');
-      const subtitle = document.getElementById('roleSubtitle');
-      
-      document.getElementById('btnRolePatient').className = 'px-3 py-1.5 rounded-lg transition ' + (currentRole === 'patient' ? 'bg-teal-500 text-slate-900 font-extrabold shadow' : 'text-slate-300 hover:text-white');
-      document.getElementById('btnRoleHelper').className = 'px-3 py-1.5 rounded-lg transition ' + (currentRole === 'helper' ? 'bg-amber-500 text-slate-900 font-extrabold shadow' : 'text-slate-300 hover:text-white');
-      document.getElementById('btnRoleDoctor').className = 'px-3 py-1.5 rounded-lg transition ' + (currentRole === 'doctor' ? 'bg-indigo-500 text-white font-extrabold shadow' : 'text-slate-300 hover:text-white');
-
-      const doctorAddBtn = document.getElementById('doctorAddBtn');
-      const doctorAddBtn2 = document.getElementById('doctorAddBtn2');
-
-      if (currentRole === 'doctor') {
-        badge.textContent = 'Mode Médecin (Prescription)';
-        badge.className = 'bg-indigo-500/20 text-indigo-300 text-[10px] font-bold px-2 py-0.5 rounded-full border border-indigo-500/30';
-        subtitle.textContent = 'Modification des ordonnances & fréquences autorisée';
-        if (doctorAddBtn) doctorAddBtn.classList.remove('hidden');
-        if (doctorAddBtn2) doctorAddBtn2.classList.remove('hidden');
-      } else if (currentRole === 'helper') {
-        badge.textContent = 'Mode Aidant / Famille';
-        badge.className = 'bg-amber-500/20 text-amber-300 text-[10px] font-bold px-2 py-0.5 rounded-full border border-amber-500/30';
-        subtitle.textContent = 'Consultation des statistiques et de l\'historique';
-        if (doctorAddBtn) doctorAddBtn.classList.add('hidden');
-        if (doctorAddBtn2) doctorAddBtn2.classList.add('hidden');
-      } else {
-        badge.textContent = 'Mode Maman (Patient)';
-        badge.className = 'bg-teal-500/20 text-teal-300 text-[10px] font-bold px-2 py-0.5 rounded-full border border-teal-500/30';
-        subtitle.textContent = 'Interface simplifiée à grands boutons';
-        if (doctorAddBtn) doctorAddBtn.classList.add('hidden');
-        if (doctorAddBtn2) doctorAddBtn2.classList.add('hidden');
-      }
-
-      renderDashboard();
-      renderAllMedsList();
-    }
-
-    // ONGLETS
-    function switchTab(tab) {
-      ['Today', 'Meds', 'Stats', 'History'].forEach(t => {
-        const btn = document.getElementById('tab' + t);
-        const panel = document.getElementById('panel' + t);
-        if (t.toLowerCase() === tab) {
-          btn.className = 'flex-1 py-3.5 px-4 font-extrabold text-teal-700 border-b-2 border-teal-600 flex items-center justify-center gap-2 bg-white transition whitespace-nowrap';
-          panel.classList.remove('hidden');
-        } else {
-          btn.className = 'flex-1 py-3.5 px-4 font-bold text-slate-500 hover:text-slate-700 flex items-center justify-center gap-2 transition whitespace-nowrap';
-          panel.classList.add('hidden');
-        }
-      });
-      if (tab === 'stats') renderStats();
-      if (tab === 'history') renderHistoryTable();
-    }
-
-    // RENDU TABLEAU DE BORD
-    function renderDashboard() {
-      const todayKey = getTodayKey();
-      if (!dailyRecords[todayKey]) dailyRecords[todayKey] = {};
-
-      const todayListEl = document.getElementById('todayDoseList');
-      todayListEl.innerHTML = '';
-
-      let totalDoses = 0, takenDoses = 0, skippedDoses = 0;
-      let todayItems = [];
-
-      medications.forEach(med => {
-        med.times.forEach(time => {
-          totalDoses++;
-          const doseId = `${med.id}_${time}`;
-          const status = dailyRecords[todayKey][doseId] || 'pending';
-
-          if (status === 'taken') takenDoses++;
-          if (status === 'skipped') skippedDoses++;
-
-          todayItems.push({ ...med, time, doseId, status });
-        });
-      });
-
-      todayItems.sort((a, b) => a.time.localeCompare(b.time));
-
-      if (todayItems.length === 0) {
-        todayListEl.innerHTML = `
-          <div class="text-center py-10 bg-slate-50 rounded-2xl border border-dashed border-slate-300">
-            <i class="fa-solid fa-capsules text-4xl text-slate-300 mb-2"></i>
-            <p class="text-slate-500 font-bold text-sm">Aucune prise enregistrée pour aujourd'hui.</p>
-          </div>`;
-      } else {
-        todayItems.forEach(item => {
-          const isTaken = item.status === 'taken';
-          const isSkipped = item.status === 'skipped';
-
-          const card = document.createElement('div');
-          
-          // Style adapté si Mode Maman (très lisible)
-          const isPatientMode = currentRole === 'patient';
-          card.className = `p-4 rounded-2xl border transition flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 ${
-            isTaken 
-              ? 'bg-emerald-50/70 border-emerald-300' 
-              : isSkipped 
-              ? 'bg-slate-100 border-slate-200 opacity-70' 
-              : 'bg-white border-slate-200 shadow-sm'
-          }`;
-
-          card.innerHTML = `
-            <div class="flex items-center gap-4">
-              <div class="text-2xl w-14 h-14 rounded-2xl ${isTaken ? 'bg-emerald-100 text-emerald-600' : 'bg-teal-50 text-teal-600'} flex items-center justify-center shrink-0 border border-slate-100">
-                <i class="fa-solid ${item.icon}"></i>
-              </div>
-              <div>
-                <div class="flex items-center gap-2">
-                  <span class="text-xs font-black px-2.5 py-0.5 rounded-full ${isTaken ? 'bg-emerald-200 text-emerald-900' : 'bg-teal-100 text-teal-900'}">
-                    <i class="fa-regular fa-clock mr-1"></i>${item.time}
-                  </span>
-                  ${item.stock <= item.refill ? `<span class="text-[10px] bg-rose-100 text-rose-800 font-extrabold px-2 py-0.5 rounded-full">Stock: ${item.stock}</span>` : ''}
-                </div>
-                <h4 class="med-title text-lg font-black text-slate-900 mt-1">${item.name}</h4>
-                <p class="text-xs text-slate-600 font-semibold">${item.dosage} • ${item.instructions || 'Pas d\'instruction spécifiée'}</p>
-              </div>
-            </div>
-
-            <!-- BOUTONS D'ACTION PRISES -->
-            <div class="flex items-center gap-2 w-full sm:w-auto justify-end border-t sm:border-t-0 pt-3 sm:pt-0 border-slate-100">
-              ${isTaken ? `
-                <button onclick="toggleDoseStatus('${item.doseId}', '${item.name}', '${item.dosage}', 'pending')" class="bg-emerald-600 text-white px-5 py-3 rounded-2xl text-xs font-black flex items-center gap-2 shadow">
-                  <i class="fa-solid fa-check-double text-base"></i> Pris
-                </button>
-              ` : `
-                <button onclick="toggleDoseStatus('${item.doseId}', '${item.name}', '${item.dosage}', 'taken')" class="${isPatientMode ? 'w-full py-4 text-base' : 'px-5 py-3 text-xs'} bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-2xl shadow-md transition flex items-center justify-center gap-2">
-                  <i class="fa-solid fa-check"></i> Marquer comme Pris
-                </button>
-              `}
-            </div>
-          `;
-          todayListEl.appendChild(card);
-        });
-      }
-
-      // PROGRESS BAR
-      const pendingDoses = totalDoses - takenDoses - skippedDoses;
-      const percentage = totalDoses > 0 ? Math.round((takenDoses / totalDoses) * 100) : 0;
-
-      document.getElementById('progressBar').style.width = percentage + '%';
-      document.getElementById('progressPercentage').textContent = percentage + '%';
-      document.getElementById('progressSummary').textContent = `${takenDoses} sur ${totalDoses} prises effectuées`;
-      document.getElementById('takenCount').textContent = `${takenDoses} Pris`;
-      document.getElementById('pendingCount').textContent = `${pendingDoses} En attente`;
-      document.getElementById('skippedCount').textContent = `${skippedDoses} Ignorés`;
-      document.getElementById('medBadgeCount').textContent = medications.length;
-
-      saveState();
-    }
-
-    // ARMOIRE À MÉDICAMENTS (MODIFICATION AUTORISÉE SI MÉDECIN)
-    function renderAllMedsList() {
-      const container = document.getElementById('allMedsList');
-      container.innerHTML = '';
-
-      medications.forEach(med => {
-        const card = document.createElement('div');
-        card.className = 'bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3 flex flex-col justify-between';
-        card.innerHTML = `
-          <div class="flex items-start justify-between">
-            <div class="flex items-center gap-3">
-              <div class="text-xl w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center">
-                <i class="fa-solid ${med.icon}"></i>
-              </div>
-              <div>
-                <h4 class="med-title font-extrabold text-slate-800 text-sm">${med.name}</h4>
-                <p class="text-xs text-slate-500 font-semibold">${med.dosage}</p>
-              </div>
-            </div>
-            ${currentRole === 'doctor' ? `
-              <div class="flex items-center gap-1">
-                <button onclick="editMedication('${med.id}')" class="text-teal-600 hover:text-teal-800 p-1.5 text-xs font-bold"><i class="fa-solid fa-pen"></i> Modifier</button>
-                <button onclick="deleteMedication('${med.id}')" class="text-rose-500 hover:text-rose-700 p-1.5 text-xs font-bold"><i class="fa-solid fa-trash"></i></button>
-              </div>
-            ` : ''}
-          </div>
-          <div class="text-xs text-slate-600 space-y-1 bg-white p-3 rounded-xl border border-slate-100">
-            <p><strong>Fréquence:</strong> ${med.times.join(', ')}</p>
-            <p><strong>Instructions:</strong> ${med.instructions || 'Aucune'}</p>
-            <p><strong>Stock restants:</strong> ${med.stock} unités</p>
-          </div>
-        `;
-        container.appendChild(card);
-      });
-    }
-
-    // ACTION PRISE
-    function toggleDoseStatus(doseId, medName, dosage, newStatus) {
-      const todayKey = getTodayKey();
-      dailyRecords[todayKey][doseId] = newStatus;
-
-      const medId = doseId.split('_')[0];
-      const med = medications.find(m => m.id === medId);
-      if (med && newStatus === 'taken') {
-        med.stock = Math.max(0, med.stock - 1);
-      }
-
-      historyLogs.unshift({
-        timestamp: new Date().toLocaleString('fr-FR'),
-        medName,
-        dosage,
-        status: newStatus === 'taken' ? 'Pris' : 'Ignoré',
-        note: `Action enregistrée par ${currentRole}`
-      });
-
-      renderDashboard();
-    }
-
-    // ALARME ÉVOLUTIVE ET REPEATING CHIME (TOUTES LES 5 MINS LOUDER)
-    function playEscalatingSound(level) {
-      try {
-        if (!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)();
-
-        const now = audioContext.currentTime;
-        const osc = audioContext.createOscillator();
-        const gain = audioContext.createGain();
-
-        // Plus le niveau est haut, plus le son est fort et aigu
-        const vol = Math.min(1.0, 0.15 * level);
-        const freq = 587.33 + (level * 80);
-
-        osc.type = 'triangle';
-        osc.frequency.setValueAtTime(freq, now);
-        osc.frequency.setValueAtTime(freq * 1.25, now + 0.3);
-
-        gain.gain.setValueAtTime(vol, now);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 1.2);
-
-        osc.connect(gain);
-        gain.connect(audioContext.destination);
-
-        osc.start(now);
-        osc.stop(now + 1.2);
-      } catch (e) {
-        console.warn('Audio non supporté', e);
-      }
-    }
-
-    function checkUpcomingAlarms() {
-      const now = new Date();
-      const currentHours = String(now.getHours()).padStart(2, '0');
-      const currentMinutes = String(now.getMinutes()).padStart(2, '0');
-      const currentTimeStr = `${currentHours}:${currentMinutes}`;
-      const todayKey = getTodayKey();
-
-      medications.forEach(med => {
-        med.times.forEach(time => {
-          if (time === currentTimeStr) {
-            const doseId = `${med.id}_${time}`;
-            const status = dailyRecords[todayKey]?.[doseId];
-            if (status !== 'taken' && status !== 'skipped') {
-              startEscalatingAlarm(med, time, doseId);
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pilulier Maman - Version Securisée</title>
+    <!-- Content Security Policy -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com; style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com; font-src 'self' https:; img-src 'self' data:; connect-src 'self'; worker-src 'self' blob:;">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0fdf4',
+                            100: '#dcfce7',
+                            500: '#22c55e',
+                            600: '#16a34a',
+                            700: '#15803d',
+                        }
+                    }
+                }
             }
-          }
+        }
+    </script>
+    <style>
+        .font-zoom-active body, 
+        .font-zoom-active p, 
+        .font-zoom-active span, 
+        .font-zoom-active button, 
+        .font-zoom-active input,
+        .font-zoom-active label,
+        .font-zoom-active td,
+        .font-zoom-active th {
+            font-size: 1.25rem !important;
+            line-height: 1.75rem !important;
+        }
+
+        .font-zoom-active .med-card {
+            padding: 1.75rem !important;
+        }
+
+        .font-zoom-active .med-title {
+            font-size: 2.25rem !important;
+            line-height: 2.5rem !important;
+        }
+
+        .med-title {
+            transition: font-size 0.2s ease;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 min-h-full flex flex-col transition-colors duration-200">
+
+    <!-- Header -->
+    <header class="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 sticky top-0 z-30 shadow-sm">
+        <div class="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-950 flex items-center justify-center text-emerald-600 dark:text-emerald-400 font-bold text-xl">
+                    💊
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold tracking-tight">Pilulier Maman</h1>
+                    <div class="flex items-center space-x-2 text-xs">
+                        <span id="roleBadge" class="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-200 font-medium">Mode Patient</span>
+                        <span id="netStatus" class="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300">En ligne</span>
+                        <span id="cryptoStatus" class="px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-200">🔒 Verrouillé</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Global Controls -->
+            <div class="flex items-center space-x-2">
+                <button id="btnZoomToggle" class="p-2 rounded-lg bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 font-bold text-sm" title="Taille du texte">
+                    A+ / A-
+                </button>
+                <button id="btnThemeToggle" class="p-2 rounded-lg bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-sm" title="Changer le thème">
+                    🌙
+                </button>
+                <button id="btnSwitchRole" class="px-3 py-2 rounded-lg bg-emerald-600 text-white font-medium text-sm hover:bg-emerald-700 transition">
+                    Changer de Mode
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-1 max-w-4xl w-full mx-auto p-4 space-y-6">
+
+        <!-- Banner for Locked Vault -->
+        <div id="lockedVaultBanner" class="p-4 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-xl flex flex-col md:flex-row items-center justify-between gap-3">
+            <div class="flex items-center space-x-3">
+                <span class="text-2xl">🔒</span>
+                <div>
+                    <h3 class="font-bold text-amber-900 dark:text-amber-200">Coffre-fort d'ordonnance verrouillé</h3>
+                    <p class="text-xs text-amber-700 dark:text-amber-400">Veuillez déverrouiller le coffre avec le PIN master pour accéder aux données cryptées AES-256-GCM.</p>
+                </div>
+            </div>
+            <button id="btnUnlockVault" class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold rounded-lg shadow-sm">
+                Déverrouiller
+            </button>
+        </div>
+
+        <!-- Role: Patient View -->
+        <section id="viewPatient" class="space-y-4">
+            <div class="bg-white dark:bg-slate-800 rounded-2xl p-4 border border-slate-200 dark:border-slate-700 shadow-sm">
+                <div class="flex justify-between items-center mb-3">
+                    <h2 class="text-lg font-bold">Prises d'aujourd'hui</h2>
+                    <span id="dailyProgress" class="text-sm font-semibold text-emerald-600 dark:text-emerald-400">0/0 pris</span>
+                </div>
+                <div id="patientMedList" class="space-y-3">
+                    <p class="text-slate-500 text-center py-6 text-sm">Déverrouillez l'application pour charger les médicaments.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Role: Helper View -->
+        <section id="viewHelper" class="hidden space-y-6">
+            <div class="bg-white dark:bg-slate-800 rounded-2xl p-4 border border-slate-200 dark:border-slate-700 shadow-sm">
+                <h2 class="text-lg font-bold mb-3">Tableau de suivi (Aidant)</h2>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                    <div class="p-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-xl text-center">
+                        <div class="text-xs text-emerald-700 dark:text-emerald-400 font-medium">Observance</div>
+                        <div id="statAdherence" class="text-2xl font-extrabold text-emerald-600 dark:text-emerald-300">--%</div>
+                    </div>
+                    <div class="p-3 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 rounded-xl text-center">
+                        <div class="text-xs text-blue-700 dark:text-blue-400 font-medium">Pris</div>
+                        <div id="statTaken" class="text-2xl font-extrabold text-blue-600 dark:text-blue-300">0</div>
+                    </div>
+                    <div class="p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-xl text-center">
+                        <div class="text-xs text-amber-700 dark:text-amber-400 font-medium">Repoussés</div>
+                        <div id="statSnoozed" class="text-2xl font-extrabold text-amber-600 dark:text-amber-300">0</div>
+                    </div>
+                    <div class="p-3 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 rounded-xl text-center">
+                        <div class="text-xs text-rose-700 dark:text-rose-400 font-medium">Manqués</div>
+                        <div id="statMissed" class="text-2xl font-extrabold text-rose-600 dark:text-rose-300">0</div>
+                    </div>
+                </div>
+
+                <h3 class="font-bold text-sm mb-2">Historique des prises</h3>
+                <div id="helperLogList" class="space-y-2 max-h-60 overflow-y-auto text-sm">
+                    <p class="text-slate-400 text-center py-4">Aucun enregistrement pour l'instant.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Role: Doctor View -->
+        <section id="viewDoctor" class="hidden space-y-6">
+            <div class="bg-white dark:bg-slate-800 rounded-2xl p-5 border border-slate-200 dark:border-slate-700 shadow-sm">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-lg font-bold">Gestion des Médicaments (Médecin)</h2>
+                    <button id="btnOpenAddMed" class="px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-sm font-semibold hover:bg-emerald-700">
+                        + Ajouter un médicament
+                    </button>
+                </div>
+
+                <div id="doctorMedList" class="space-y-3">
+                    <p class="text-slate-400 text-center py-4">Aucun médicament configuré.</p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Modal PIN Master & Cryptage -->
+    <div id="modalPin" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl max-w-sm w-full p-6 shadow-xl border border-slate-200 dark:border-slate-700">
+            <h3 class="text-lg font-bold text-center mb-2">Authentification Requis</h3>
+            <p class="text-xs text-slate-500 text-center mb-4">Saisissez le code PIN Master pour déverrouiller la clé AES-256-GCM (PBKDF2).</p>
+            
+            <form id="formPin" class="space-y-4">
+                <div>
+                    <input type="password" id="inputPin" maxlength="8" placeholder="Entrez le PIN (ex: 1234)" 
+                        class="w-full text-center tracking-widest text-xl font-mono py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                </div>
+                <div id="pinError" class="text-xs text-rose-500 text-center hidden">Code PIN invalide ou échec de déchiffrement</div>
+                <div class="flex space-x-2">
+                    <button type="button" id="btnCancelPin" class="flex-1 py-2 bg-slate-100 dark:bg-slate-700 rounded-lg text-sm font-semibold">Annuler</button>
+                    <button type="submit" class="flex-1 py-2 bg-emerald-600 text-white rounded-lg text-sm font-semibold hover:bg-emerald-700">Déverrouiller</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Formulaire Médicament -->
+    <div id="modalMedForm" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-200 dark:border-slate-700 max-h-[90vh] overflow-y-auto">
+            <h3 id="medFormTitle" class="text-lg font-bold mb-4">Ajouter un médicament</h3>
+            <form id="formMed" class="space-y-3">
+                <input type="hidden" id="medId">
+                <div>
+                    <label class="block text-xs font-semibold mb-1">Nom du médicament</label>
+                    <input type="text" id="medName" required placeholder="ex: Paracétamol" class="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-sm focus:ring-2 focus:ring-emerald-500">
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-xs font-semibold mb-1">Dosage</label>
+                        <input type="text" id="medDosage" required placeholder="ex: 1000 mg" class="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-sm focus:ring-2 focus:ring-emerald-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold mb-1">Heure de prise</label>
+                        <input type="time" id="medTime" required class="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-sm focus:ring-2 focus:ring-emerald-500">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold mb-1">Instructions / Remarques</label>
+                    <input type="text" id="medInstructions" placeholder="ex: Pendant le repas" class="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-sm focus:ring-2 focus:ring-emerald-500">
+                </div>
+                <div class="flex justify-end space-x-2 pt-2">
+                    <button type="button" id="btnCancelMedForm" class="px-4 py-2 bg-slate-100 dark:bg-slate-700 rounded-lg text-sm font-semibold">Annuler</button>
+                    <button type="submit" class="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-semibold hover:bg-emerald-700">Enregistrer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Application Script Engine -->
+    <script>
+        /**
+         * Security Engine: Client-Side Web Crypto API Architecture (AES-256-GCM + PBKDF2)
+         */
+        class CryptoEngine {
+            static async deriveKey(pin, salt) {
+                const enc = new TextEncoder();
+                const pinBuffer = enc.encode(pin);
+                const baseKey = await window.crypto.subtle.importKey(
+                    'raw', pinBuffer, { name: 'PBKDF2' }, false, ['deriveKey']
+                );
+                return await window.crypto.subtle.deriveKey(
+                    {
+                        name: 'PBKDF2',
+                        salt: salt,
+                        iterations: 600000,
+                        hash: 'SHA-256'
+                    },
+                    baseKey,
+                    { name: 'AES-GCM', length: 256 },
+                    false,
+                    ['encrypt', 'decrypt']
+                );
+            }
+
+            static async encryptData(dataObj, derivedKey) {
+                const enc = new TextEncoder();
+                const iv = window.crypto.getRandomValues(new Uint8Array(12));
+                const encodedData = enc.encode(JSON.stringify(dataObj));
+
+                const ciphertextBuffer = await window.crypto.subtle.encrypt(
+                    { name: 'AES-GCM', iv: iv },
+                    derivedKey,
+                    encodedData
+                );
+
+                return {
+                    iv: Array.from(iv),
+                    ciphertext: Array.from(new Uint8Array(ciphertextBuffer))
+                };
+            }
+
+            static async decryptData(encryptedBundle, derivedKey) {
+                const dec = new TextDecoder();
+                const iv = new Uint8Array(encryptedBundle.iv);
+                const ciphertext = new Uint8Array(encryptedBundle.ciphertext);
+
+                const decryptedBuffer = await window.crypto.subtle.decrypt(
+                    { name: 'AES-GCM', iv: iv },
+                    derivedKey,
+                    ciphertext
+                );
+
+                return JSON.parse(dec.decode(decryptedBuffer));
+            }
+        }
+
+        /**
+         * Core Application State
+         */
+        const AppState = {
+            currentRole: 'patient', // 'patient' | 'helper' | 'doctor'
+            activeKey: null,
+            salt: null,
+            isUnlocked: false,
+            medications: [],
+            logs: [],
+            pendingTargetRole: null,
+            targetEditId: null
+        };
+
+        // DOM Elements
+        const el = {
+            roleBadge: document.getElementById('roleBadge'),
+            netStatus: document.getElementById('netStatus'),
+            cryptoStatus: document.getElementById('cryptoStatus'),
+            lockedVaultBanner: document.getElementById('lockedVaultBanner'),
+            btnUnlockVault: document.getElementById('btnUnlockVault'),
+            btnThemeToggle: document.getElementById('btnThemeToggle'),
+            btnZoomToggle: document.getElementById('btnZoomToggle'),
+            btnSwitchRole: document.getElementById('btnSwitchRole'),
+            viewPatient: document.getElementById('viewPatient'),
+            viewHelper: document.getElementById('viewHelper'),
+            viewDoctor: document.getElementById('viewDoctor'),
+            patientMedList: document.getElementById('patientMedList'),
+            doctorMedList: document.getElementById('doctorMedList'),
+            helperLogList: document.getElementById('helperLogList'),
+            dailyProgress: document.getElementById('dailyProgress'),
+            statAdherence: document.getElementById('statAdherence'),
+            statTaken: document.getElementById('statTaken'),
+            statSnoozed: document.getElementById('statSnoozed'),
+            statMissed: document.getElementById('statMissed'),
+            modalPin: document.getElementById('modalPin'),
+            formPin: document.getElementById('formPin'),
+            inputPin: document.getElementById('inputPin'),
+            pinError: document.getElementById('pinError'),
+            btnCancelPin: document.getElementById('btnCancelPin'),
+            modalMedForm: document.getElementById('modalMedForm'),
+            formMed: document.getElementById('formMed'),
+            medFormTitle: document.getElementById('medFormTitle'),
+            medId: document.getElementById('medId'),
+            medName: document.getElementById('medName'),
+            medDosage: document.getElementById('medDosage'),
+            medTime: document.getElementById('medTime'),
+            medInstructions: document.getElementById('medInstructions'),
+            btnOpenAddMed: document.getElementById('btnOpenAddMed'),
+            btnCancelMedForm: document.getElementById('btnCancelMedForm')
+        };
+
+        // Initialize Application
+        document.addEventListener('DOMContentLoaded', () => {
+            initCryptoSalt();
+            setupThemeAndZoom();
+            setupNetworkListeners();
+            setupEventListeners();
+            registerServiceWorker();
         });
-      });
-    }
 
-    function startEscalatingAlarm(med, time, doseId) {
-      currentActiveAlarm = { med, time, doseId };
-      alarmVolumeLevel = 1;
+        function initCryptoSalt() {
+            let storedSalt = localStorage.getItem('vault_salt');
+            if (!storedSalt) {
+                const saltArray = window.crypto.getRandomValues(new Uint8Array(16));
+                storedSalt = JSON.stringify(Array.from(saltArray));
+                localStorage.setItem('vault_salt', storedSalt);
+            }
+            AppState.salt = new Uint8Array(JSON.parse(storedSalt));
+        }
 
-      document.getElementById('alarmMedName').textContent = med.name;
-      document.getElementById('alarmMedDosage').textContent = `${med.dosage} à ${time}`;
-      document.getElementById('alarmMedInstructions').textContent = med.instructions || 'Aucune instruction.';
-      document.getElementById('alarmLevelText').textContent = `Niveau Son: ${alarmVolumeLevel}/5`;
-      document.getElementById('alarmModal').classList.remove('hidden');
+        // Network Status Management
+        function setupNetworkListeners() {
+            const updateNet = () => {
+                if (navigator.onLine) {
+                    el.netStatus.textContent = "En ligne";
+                    el.netStatus.className = "px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300";
+                    syncOfflineQueue();
+                } else {
+                    el.netStatus.textContent = "Hors ligne";
+                    el.netStatus.className = "px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-200";
+                }
+            };
+            window.addEventListener('online', updateNet);
+            window.addEventListener('offline', updateNet);
+            updateNet();
+        }
 
-      playEscalatingSound(alarmVolumeLevel);
+        function syncOfflineQueue() {
+            const queue = localStorage.getItem('offline_queue');
+            if (queue) {
+                localStorage.removeItem('offline_queue');
+            }
+        }
 
-      // Alarme qui sonne toutes les 5 minutes plus fort
-      if (alarmTimerInterval) clearInterval(alarmTimerInterval);
-      alarmTimerInterval = setInterval(() => {
-        alarmVolumeLevel = Math.min(5, alarmVolumeLevel + 1);
-        document.getElementById('alarmLevelText').textContent = `Niveau Son: ${alarmVolumeLevel}/5 (Plus fort)`;
-        playEscalatingSound(alarmVolumeLevel);
-      }, 5 * 60 * 1000); // 5 Minutes
-    }
+        // Secure Lock / Unlock Workflow
+        el.btnUnlockVault.addEventListener('click', () => {
+            AppState.pendingTargetRole = AppState.currentRole;
+            el.modalPin.classList.remove('hidden');
+        });
 
-    document.getElementById('alarmTakeBtn').onclick = function() {
-      if (currentActiveAlarm) {
-        toggleDoseStatus(currentActiveAlarm.doseId, currentActiveAlarm.med.name, currentActiveAlarm.med.dosage, 'taken');
-      }
-      stopAlarm();
-    };
+        el.btnSwitchRole.addEventListener('click', () => {
+            const roles = ['patient', 'helper', 'doctor'];
+            const nextRole = roles[(roles.indexOf(AppState.currentRole) + 1) % roles.length];
+            
+            if (nextRole !== 'patient' && !AppState.isUnlocked) {
+                AppState.pendingTargetRole = nextRole;
+                el.modalPin.classList.remove('hidden');
+            } else {
+                switchRole(nextRole);
+            }
+        });
 
-    document.getElementById('alarmSnoozeBtn').onclick = function() {
-      stopAlarm();
-    };
+        el.btnCancelPin.addEventListener('click', () => {
+            el.modalPin.classList.add('hidden');
+            el.inputPin.value = '';
+            el.pinError.classList.add('hidden');
+        });
 
-    function stopAlarm() {
-      if (alarmTimerInterval) clearInterval(alarmTimerInterval);
-      document.getElementById('alarmModal').classList.add('hidden');
-    }
+        el.formPin.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const pin = el.inputPin.value.trim();
+            if (!pin) return;
 
-    // STATISTIQUES D'OBSERVANCE
-    function renderStats() {
-      let totalLogs = historyLogs.length;
-      let takenLogs = historyLogs.filter(l => l.status === 'Pris').length;
-      let rate = totalLogs > 0 ? Math.round((takenLogs / totalLogs) * 100) : 100;
+            try {
+                const key = await CryptoEngine.deriveKey(pin, AppState.salt);
+                const encryptedVault = localStorage.getItem('encrypted_vault');
 
-      document.getElementById('statPunctuality').textContent = rate + '%';
-    }
+                if (encryptedVault) {
+                    const parsedBundle = JSON.parse(encryptedVault);
+                    const decrypted = await CryptoEngine.decryptData(parsedBundle, key);
+                    AppState.medications = decrypted.medications || [];
+                    AppState.logs = decrypted.logs || [];
+                } else {
+                    // Seed initial empty state securely
+                    AppState.medications = [];
+                    AppState.logs = [];
+                    await persistVault(key);
+                }
 
-    // HISTORIQUE
-    function renderHistoryTable() {
-      const tbody = document.getElementById('historyTableBody');
-      tbody.innerHTML = '';
-      historyLogs.slice(0, 15).forEach(log => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td class="py-2.5 px-3 font-mono">${log.timestamp}</td>
-          <td class="py-2.5 px-3 font-bold text-slate-800">${log.medName}</td>
-          <td class="py-2.5 px-3">${log.dosage}</td>
-          <td class="py-2.5 px-3"><span class="bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full">${log.status}</span></td>
-          <td class="py-2.5 px-3 text-slate-400">${log.note}</td>
-        `;
-        tbody.appendChild(tr);
-      });
-    }
+                AppState.activeKey = key;
+                AppState.isUnlocked = true;
+                el.cryptoStatus.textContent = "🔓 Déverrouillé";
+                el.cryptoStatus.className = "px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-200";
+                el.lockedVaultBanner.classList.add('hidden');
+                el.modalPin.classList.add('hidden');
+                el.inputPin.value = '';
+                el.pinError.classList.add('hidden');
 
-    function clearHistory() {
-      historyLogs = [];
-      renderHistoryTable();
-      saveState();
-    }
+                if (AppState.pendingTargetRole) {
+                    switchRole(AppState.pendingTargetRole);
+                    AppState.pendingTargetRole = null;
+                }
+                renderAll();
+            } catch (err) {
+                el.pinError.classList.remove('hidden');
+            }
+        });
 
-    // MODAL PRESCRIPTION MÉDECIN
-    function openAddMedModal() {
-      if (currentRole !== 'doctor') return;
-      document.getElementById('medModal').classList.remove('hidden');
-      document.getElementById('medForm').reset();
-      document.getElementById('medId').value = '';
-    }
+        async function persistVault(keyInstance = AppState.activeKey) {
+            if (!keyInstance) return;
+            const payload = {
+                medications: AppState.medications,
+                logs: AppState.logs
+            };
+            const encryptedBundle = await CryptoEngine.encryptData(payload, keyInstance);
+            localStorage.setItem('encrypted_vault', JSON.stringify(encryptedBundle));
+        }
 
-    function closeMedModal() {
-      document.getElementById('medModal').classList.add('hidden');
-    }
+        function switchRole(targetRole) {
+            AppState.currentRole = targetRole;
+            el.viewPatient.classList.add('hidden');
+            el.viewHelper.classList.add('hidden');
+            el.viewDoctor.classList.add('hidden');
 
-    function handleFormSubmit(e) {
-      e.preventDefault();
-      const id = document.getElementById('medId').value || 'med-' + Date.now();
-      const name = document.getElementById('medName').value.trim();
-      const dosage = document.getElementById('medDosage').value.trim();
-      const icon = document.getElementById('medIcon').value;
-      const times = document.getElementById('medTimes').value.split(',').map(t => t.trim());
-      const instructions = document.getElementById('medInstructions').value.trim();
-      const stock = parseInt(document.getElementById('medStock').value) || 30;
-      const refill = parseInt(document.getElementById('medRefill').value) || 5;
+            if (targetRole === 'patient') {
+                el.roleBadge.textContent = "Mode Patient";
+                el.viewPatient.classList.remove('hidden');
+            } else if (targetRole === 'helper') {
+                el.roleBadge.textContent = "Mode Aidant";
+                el.viewHelper.classList.remove('hidden');
+            } else if (targetRole === 'doctor') {
+                el.roleBadge.textContent = "Mode Médecin";
+                el.viewDoctor.classList.remove('hidden');
+            }
+            renderAll();
+        }
 
-      const existingIndex = medications.findIndex(m => m.id === id);
-      const medObj = { id, name, dosage, icon, times, instructions, stock, refill };
+        // Render Functions using XSS-Safe DOM Manipulation
+        function renderAll() {
+            renderPatientView();
+            renderHelperView();
+            renderDoctorView();
+        }
 
-      if (existingIndex >= 0) medications[existingIndex] = medObj;
-      else medications.push(medObj);
+        function renderPatientView() {
+            el.patientMedList.textContent = '';
+            if (!AppState.isUnlocked) {
+                const msg = document.createElement('p');
+                msg.className = "text-slate-500 text-center py-6 text-sm";
+                msg.textContent = "Déverrouillez l'application pour charger les médicaments.";
+                el.patientMedList.appendChild(msg);
+                el.dailyProgress.textContent = "0/0 pris";
+                return;
+            }
 
-      closeMedModal();
-      renderDashboard();
-      renderAllMedsList();
-    }
+            if (AppState.medications.length === 0) {
+                const msg = document.createElement('p');
+                msg.className = "text-slate-400 text-center py-6 text-sm";
+                msg.textContent = "Aucun médicament planifié.";
+                el.patientMedList.appendChild(msg);
+                el.dailyProgress.textContent = "0/0 pris";
+                return;
+            }
 
-    function editMedication(id) {
-      const med = medications.find(m => m.id === id);
-      if (!med) return;
-      document.getElementById('medId').value = med.id;
-      document.getElementById('medName').value = med.name;
-      document.getElementById('medDosage').value = med.dosage;
-      document.getElementById('medTimes').value = med.times.join(', ');
-      document.getElementById('medInstructions').value = med.instructions || '';
-      document.getElementById('medModal').classList.remove('hidden');
-    }
+            let takenCount = 0;
+            AppState.medications.forEach(med => {
+                const card = document.createElement('div');
+                card.className = "med-card p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 flex items-center justify-between";
 
-    function deleteMedication(id) {
-      medications = medications.filter(m => m.id !== id);
-      renderDashboard();
-      renderAllMedsList();
-    }
+                const left = document.createElement('div');
+                
+                const title = document.createElement('h3');
+                title.className = "med-title font-bold text-lg text-slate-900 dark:text-slate-100";
+                title.textContent = med.name; // Safe Assignment
 
-    function saveState() {
-      localStorage.setItem('mom_meds_v2', JSON.stringify(medications));
-      localStorage.setItem('mom_med_logs_v2', JSON.stringify(historyLogs));
-      localStorage.setItem('mom_daily_records_v2', JSON.stringify(dailyRecords));
-    }
-  </script>
+                const details = document.createElement('p');
+                details.className = "text-xs text-slate-500 dark:text-slate-400";
+                details.textContent = `${med.dosage} - Prise à ${med.time} (${med.instructions || 'Aucune instruction'})`;
+
+                left.appendChild(title);
+                left.appendChild(details);
+
+                const btn = document.createElement('button');
+                btn.className = "px-4 py-2.5 rounded-xl text-sm font-bold shadow-sm transition active:scale-95 bg-emerald-600 hover:bg-emerald-700 text-white";
+                btn.textContent = "PRIS";
+                btn.addEventListener('click', () => logDoseAction(med.id, 'taken'));
+
+                card.appendChild(left);
+                card.appendChild(btn);
+                el.patientMedList.appendChild(card);
+            });
+
+            el.dailyProgress.textContent = `${takenCount}/${AppState.medications.length} pris`;
+        }
+
+        function renderHelperView() {
+            el.helperLogList.textContent = '';
+            if (AppState.logs.length === 0) {
+                const empty = document.createElement('p');
+                empty.className = "text-slate-400 text-center py-4 text-xs";
+                empty.textContent = "Aucun historique de prise disponible.";
+                el.helperLogList.appendChild(empty);
+                return;
+            }
+
+            AppState.logs.slice().reverse().forEach(log => {
+                const item = document.createElement('div');
+                item.className = "p-2 rounded-lg bg-slate-100 dark:bg-slate-700/50 flex justify-between items-center text-xs";
+
+                const label = document.createElement('span');
+                label.textContent = `${log.medName} - ${log.action === 'taken' ? 'Pris' : 'Ignoré'}`;
+                
+                const time = document.createElement('span');
+                time.className = "text-slate-400 font-mono";
+                time.textContent = new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+                item.appendChild(label);
+                item.appendChild(time);
+                el.helperLogList.appendChild(item);
+            });
+
+            // Calculate adherence
+            const total = AppState.logs.length;
+            const taken = AppState.logs.filter(l => l.action === 'taken').length;
+            const rate = total > 0 ? Math.round((taken / total) * 100) : 100;
+            el.statAdherence.textContent = `${rate}%`;
+            el.statTaken.textContent = taken;
+        }
+
+        function renderDoctorView() {
+            el.doctorMedList.textContent = '';
+            if (!AppState.isUnlocked) {
+                const msg = document.createElement('p');
+                msg.className = "text-slate-400 text-center py-4 text-sm";
+                msg.textContent = "Coffre verrouillé. Déverrouillez pour modifier les ordonnances.";
+                el.doctorMedList.appendChild(msg);
+                return;
+            }
+
+            AppState.medications.forEach(med => {
+                const card = document.createElement('div');
+                card.className = "med-card p-3 rounded-xl border border-slate-200 dark:border-slate-700 flex justify-between items-center";
+
+                const info = document.createElement('div');
+                const title = document.createElement('h4');
+                title.className = "med-title font-bold text-slate-800 dark:text-slate-200";
+                title.textContent = `${med.name} (${med.dosage})`;
+
+                const sub = document.createElement('p');
+                sub.className = "text-xs text-slate-500";
+                sub.textContent = `Heure: ${med.time} | ${med.instructions || 'S.O.'}`;
+
+                info.appendChild(title);
+                info.appendChild(sub);
+
+                const actions = document.createElement('div');
+                actions.className = "flex space-x-2";
+
+                const btnEdit = document.createElement('button');
+                btnEdit.className = "px-2 py-1 bg-slate-200 dark:bg-slate-600 rounded text-xs font-semibold";
+                btnEdit.textContent = "Modifier";
+                btnEdit.addEventListener('click', () => openEditMedModal(med));
+
+                const btnDelete = document.createElement('button');
+                btnDelete.className = "px-2 py-1 bg-rose-500 text-white rounded text-xs font-semibold hover:bg-rose-600";
+                btnDelete.textContent = "Supprimer";
+                btnDelete.addEventListener('click', () => deleteMedication(med.id));
+
+                actions.appendChild(btnEdit);
+                actions.appendChild(btnDelete);
+                card.appendChild(info);
+                card.appendChild(actions);
+                el.doctorMedList.appendChild(card);
+            });
+        }
+
+        async function logDoseAction(medId, action) {
+            const med = AppState.medications.find(m => m.id === medId);
+            if (!med) return;
+
+            const logEntry = {
+                id: crypto.randomUUID(),
+                medId: med.id,
+                medName: med.name,
+                action: action,
+                timestamp: new Date().toISOString()
+            };
+
+            AppState.logs.push(logEntry);
+            if (!navigator.onLine) {
+                const queue = JSON.parse(localStorage.getItem('offline_queue') || '[]');
+                queue.push(logEntry);
+                localStorage.setItem('offline_queue', JSON.stringify(queue));
+            }
+
+            await persistVault();
+            renderAll();
+        }
+
+        // Doctor Medication Management
+        el.btnOpenAddMed.addEventListener('click', () => {
+            if (!AppState.isUnlocked) return;
+            AppState.targetEditId = null;
+            el.medFormTitle.textContent = "Ajouter un médicament";
+            el.formMed.reset();
+            el.modalMedForm.classList.remove('hidden');
+        });
+
+        el.btnCancelMedForm.addEventListener('click', () => {
+            el.modalMedForm.classList.add('hidden');
+        });
+
+        function openEditMedModal(med) {
+            AppState.targetEditId = med.id;
+            el.medFormTitle.textContent = "Modifier le médicament";
+            el.medName.value = med.name;
+            el.medDosage.value = med.dosage;
+            el.medTime.value = med.time;
+            el.medInstructions.value = med.instructions || '';
+            el.modalMedForm.classList.remove('hidden');
+        }
+
+        el.formMed.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (!AppState.isUnlocked) return;
+
+            const newMed = {
+                id: AppState.targetEditId || crypto.randomUUID(),
+                name: el.medName.value.trim(),
+                dosage: el.medDosage.value.trim(),
+                time: el.medTime.value,
+                instructions: el.medInstructions.value.trim()
+            };
+
+            if (AppState.targetEditId) {
+                const idx = AppState.medications.findIndex(m => m.id === AppState.targetEditId);
+                if (idx !== -1) AppState.medications[idx] = newMed;
+            } else {
+                AppState.medications.push(newMed);
+            }
+
+            await persistVault();
+            el.modalMedForm.classList.add('hidden');
+            renderAll();
+        });
+
+        async function deleteMedication(id) {
+            if (!AppState.isUnlocked) return;
+            AppState.medications = AppState.medications.filter(m => m.id !== id);
+            await persistVault();
+            renderAll();
+        }
+
+        // Accessibility & Themes
+        function setupThemeAndZoom() {
+            el.btnThemeToggle.addEventListener('click', () => {
+                document.documentElement.classList.toggle('dark');
+            });
+
+            el.btnZoomToggle.addEventListener('click', () => {
+                document.documentElement.classList.toggle('font-zoom-active');
+            });
+        }
+
+        // Service Worker Isolation
+        function registerServiceWorker() {
+            if ('serviceWorker' in navigator) {
+                const swCode = `
+                    self.addEventListener('install', e => self.skipWaiting());
+                    self.addEventListener('activate', e => e.waitUntil(clients.claim()));
+                    self.addEventListener('fetch', e => {
+                        e.respondWith(fetch(e.request).catch(() => new Response('Offline')));
+                    });
+                `;
+                const blob = new Blob([swCode], { type: 'application/javascript' });
+                const blobUrl = URL.createObjectURL(blob);
+                navigator.serviceWorker.register(blobUrl).catch(() => {});
+            }
+        }
+    </script>
 </body>
 </html>
