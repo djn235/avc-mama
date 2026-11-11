@@ -151,12 +151,12 @@ function syncOfflineQueue() {
 
 // Event Listeners Setup
 function setupEventListeners() {
-    el.btnUnlockVault.addEventListener('click', () => {
+    el.btnUnlockVault.onclick = () => {
         AppState.pendingTargetRole = AppState.currentRole;
         el.modalPin.classList.remove('hidden');
-    });
+    };
 
-    el.btnSwitchRole.addEventListener('click', () => {
+    el.btnSwitchRole.onclick = () => {
         const roles = ['patient', 'helper', 'doctor'];
         const nextRole = roles[(roles.indexOf(AppState.currentRole) + 1) % roles.length];
         
@@ -166,15 +166,15 @@ function setupEventListeners() {
         } else {
             switchRole(nextRole);
         }
-    });
+    };
 
-    el.btnCancelPin.addEventListener('click', () => {
+    el.btnCancelPin.onclick = () => {
         el.modalPin.classList.add('hidden');
         el.inputPin.value = '';
         el.pinError.classList.add('hidden');
-    });
+    };
 
-    el.formPin.addEventListener('submit', async (e) => {
+    el.formPin.onsubmit = async (e) => {
         e.preventDefault();
         const pin = el.inputPin.value.trim();
         if (!pin) return;
@@ -211,7 +211,7 @@ function setupEventListeners() {
         } catch (err) {
             el.pinError.classList.remove('hidden');
         }
-    });
+    };
 }
 
 async function persistVault(keyInstance = AppState.activeKey) {
@@ -270,10 +270,25 @@ function renderPatientView() {
         return;
     }
 
+    const todayStr = new Date().toISOString().split('T')[0];
     let takenCount = 0;
+
     AppState.medications.forEach(med => {
+        // Check if already taken today
+        const alreadyTakenToday = AppState.logs.some(log => 
+            log.medId === med.id && 
+            log.action === 'taken' && 
+            log.timestamp.startsWith(todayStr)
+        );
+
+        if (alreadyTakenToday) takenCount++;
+
         const card = document.createElement('div');
-        card.className = "med-card p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 flex items-center justify-between";
+        card.className = `med-card p-4 rounded-xl border transition-all ${
+            alreadyTakenToday 
+                ? 'border-emerald-300 bg-emerald-50/50 dark:bg-emerald-950/20 dark:border-emerald-800' 
+                : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900'
+        } flex items-center justify-between`;
 
         const left = document.createElement('div');
         
@@ -289,9 +304,14 @@ function renderPatientView() {
         left.appendChild(details);
 
         const btn = document.createElement('button');
-        btn.className = "px-4 py-2.5 rounded-xl text-sm font-bold shadow-sm transition active:scale-95 bg-emerald-600 hover:bg-emerald-700 text-white";
-        btn.textContent = "PRIS";
-        btn.onclick = () => logDoseAction(med.id, 'taken');
+        if (alreadyTakenToday) {
+            btn.className = "px-4 py-2.5 rounded-xl text-sm font-bold bg-emerald-600 text-white shadow-inner flex items-center space-x-1 cursor-default";
+            btn.textContent = "✓ DÉJÀ PRIS";
+        } else {
+            btn.className = "px-5 py-2.5 rounded-xl text-sm font-bold shadow-sm transition active:scale-95 bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer";
+            btn.textContent = "PRIS";
+            btn.onclick = () => handlePatientTakeDose(med);
+        }
 
         card.appendChild(left);
         card.appendChild(btn);
@@ -299,6 +319,26 @@ function renderPatientView() {
     });
 
     el.dailyProgress.textContent = `${takenCount}/${AppState.medications.length} pris`;
+}
+
+async function handlePatientTakeDose(med) {
+    const todayStr = new Date().toISOString().split('T')[0];
+    const alreadyTakenToday = AppState.logs.some(log => 
+        log.medId === med.id && 
+        log.action === 'taken' && 
+        log.timestamp.startsWith(todayStr)
+    );
+
+    if (alreadyTakenToday) {
+        alert(`ATTENTION : Vous avez déjà enregistré la prise de "${med.name}" aujourd'hui ! Pour des raisons de sécurité vitale, la double prise n'est pas autorisée sans l'accord d'un aidant ou d'un médecin.`);
+        return;
+    }
+
+    const confirmTake = confirm(`Voulez-vous confirmer la prise de "${med.name}" (${med.dosage}) ?`);
+    if (!confirmTake) return;
+
+    await logDoseAction(med.id, 'taken');
+    alert(`✓ Prise de "${med.name}" enregistrée avec succès. Bon rétablissement !`);
 }
 
 function renderHelperView() {
