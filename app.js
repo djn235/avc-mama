@@ -279,7 +279,7 @@ function renderPatientView() {
         
         const title = document.createElement('h3');
         title.className = "med-title font-bold text-lg text-slate-900 dark:text-slate-100";
-        title.textContent = med.name; // Safe Assignment
+        title.textContent = med.name;
 
         const details = document.createElement('p');
         details.className = "text-xs text-slate-500 dark:text-slate-400";
@@ -291,7 +291,7 @@ function renderPatientView() {
         const btn = document.createElement('button');
         btn.className = "px-4 py-2.5 rounded-xl text-sm font-bold shadow-sm transition active:scale-95 bg-emerald-600 hover:bg-emerald-700 text-white";
         btn.textContent = "PRIS";
-        btn.addEventListener('click', () => logDoseAction(med.id, 'taken'));
+        btn.onclick = () => logDoseAction(med.id, 'taken');
 
         card.appendChild(left);
         card.appendChild(btn);
@@ -366,12 +366,12 @@ function renderDoctorView() {
         const btnEdit = document.createElement('button');
         btnEdit.className = "px-2 py-1 bg-slate-200 dark:bg-slate-600 rounded text-xs font-semibold";
         btnEdit.textContent = "Modifier";
-        btnEdit.addEventListener('click', () => openEditMedModal(med));
+        btnEdit.onclick = () => openEditMedModal(med);
 
         const btnDelete = document.createElement('button');
         btnDelete.className = "px-2 py-1 bg-rose-500 text-white rounded text-xs font-semibold hover:bg-rose-600";
         btnDelete.textContent = "Supprimer";
-        btnDelete.addEventListener('click', () => deleteMedication(med.id));
+        btnDelete.onclick = () => deleteMedication(med.id);
 
         actions.appendChild(btnEdit);
         actions.appendChild(btnDelete);
@@ -405,17 +405,17 @@ async function logDoseAction(medId, action) {
 }
 
 // Doctor Medication Management
-el.btnOpenAddMed.addEventListener('click', () => {
+el.btnOpenAddMed.onclick = () => {
     if (!AppState.isUnlocked) return;
     AppState.targetEditId = null;
     el.medFormTitle.textContent = "Ajouter un médicament";
     el.formMed.reset();
     el.modalMedForm.classList.remove('hidden');
-});
+};
 
-el.btnCancelMedForm.addEventListener('click', () => {
+el.btnCancelMedForm.onclick = () => {
     el.modalMedForm.classList.add('hidden');
-});
+};
 
 function openEditMedModal(med) {
     AppState.targetEditId = med.id;
@@ -427,7 +427,7 @@ function openEditMedModal(med) {
     el.modalMedForm.classList.remove('hidden');
 }
 
-el.formMed.addEventListener('submit', async (e) => {
+el.formMed.onsubmit = async (e) => {
     e.preventDefault();
     if (!AppState.isUnlocked) return;
 
@@ -449,7 +449,7 @@ el.formMed.addEventListener('submit', async (e) => {
     await persistVault();
     el.modalMedForm.classList.add('hidden');
     renderAll();
-});
+};
 
 async function deleteMedication(id) {
     if (!AppState.isUnlocked) return;
@@ -460,13 +460,13 @@ async function deleteMedication(id) {
 
 // Accessibility & Themes
 function setupThemeAndZoom() {
-    el.btnThemeToggle.addEventListener('click', () => {
+    el.btnThemeToggle.onclick = () => {
         document.documentElement.classList.toggle('dark');
-    });
+    };
 
-    el.btnZoomToggle.addEventListener('click', () => {
+    el.btnZoomToggle.onclick = () => {
         document.documentElement.classList.toggle('font-zoom-active');
-    });
+    };
 }
 
 // Service Worker Isolation
