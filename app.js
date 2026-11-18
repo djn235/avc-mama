@@ -112,9 +112,50 @@ document.addEventListener('DOMContentLoaded', () => {
     setupThemeAndZoom();
     setupNetworkListeners();
     setupEventListeners();
-    registerServiceWorker();
     initMedicationTimer(); // Surveillance des retards
 });
+
+// Theme & Accessibility Zoom Management
+function setupThemeAndZoom() {
+    if (localStorage.getItem('theme') === 'dark') {
+        document.documentElement.classList.add('dark');
+        el.btnThemeToggle.textContent = '☀️';
+    }
+    if (localStorage.getItem('font_zoom') === 'true') {
+        document.documentElement.classList.add('font-zoom-active');
+    }
+
+    el.btnThemeToggle.onclick = () => {
+        const isDark = document.documentElement.classList.toggle('dark');
+        localStorage.setItem('theme', isDark ? 'dark' : 'light');
+        el.btnThemeToggle.textContent = isDark ? '☀️' : '🌙';
+    };
+
+    el.btnZoomToggle.onclick = () => {
+        const isZoomed = document.documentElement.classList.toggle('font-zoom-active');
+        localStorage.setItem('font_zoom', isZoomed ? 'true' : 'false');
+    };
+}
+
+// Refresh Patient View every minute to flag overdue doses (> 30 min)
+function initMedicationTimer() {
+    setInterval(() => {
+        if (AppState.isUnlocked && AppState.currentRole === 'patient') {
+            renderPatientView();
+        }
+    }, 60000);
+}
+
+// Modal Helpers (Toggle hidden <-> flex cleanly)
+function openModal(modalEl) {
+    modalEl.classList.remove('hidden');
+    modalEl.classList.add('flex');
+}
+
+function closeModal(modalEl) {
+    modalEl.classList.add('hidden');
+    modalEl.classList.remove('flex');
+}
 
 function initCryptoSalt() {
     let storedSalt = localStorage.getItem('vault_salt');
@@ -154,7 +195,8 @@ function syncOfflineQueue() {
 function setupEventListeners() {
     el.btnUnlockVault.onclick = () => {
         AppState.pendingTargetRole = AppState.currentRole;
-        el.modalPin.classList.remove('hidden');
+        openModal(el.modalPin);
+        el.inputPin.focus();
     };
 
     el.btnSwitchRole.onclick = () => {
@@ -163,14 +205,15 @@ function setupEventListeners() {
         
         if (nextRole !== 'patient' && !AppState.isUnlocked) {
             AppState.pendingTargetRole = nextRole;
-            el.modalPin.classList.remove('hidden');
+            openModal(el.modalPin);
+            el.inputPin.focus();
         } else {
             switchRole(nextRole);
         }
     };
 
     el.btnCancelPin.onclick = () => {
-        el.modalPin.classList.add('hidden');
+        closeModal(el.modalPin);
         el.inputPin.value = '';
         el.pinError.classList.add('hidden');
     };
@@ -200,7 +243,7 @@ function setupEventListeners() {
             el.cryptoStatus.textContent = "🔓 Déverrouillé";
             el.cryptoStatus.className = "px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-200";
             el.lockedVaultBanner.classList.add('hidden');
-            el.modalPin.classList.add('hidden');
+            closeModal(el.modalPin);
             el.inputPin.value = '';
             el.pinError.classList.add('hidden');
 
@@ -213,12 +256,13 @@ function setupEventListeners() {
             el.pinError.classList.remove('hidden');
         }
     };
+
     const filterSpecialtyEl = document.getElementById('filterSpecialty');
-if (filterSpecialtyEl) {
-    filterSpecialtyEl.onchange = () => {
-        renderDoctorView();
-    };
-}
+    if (filterSpecialtyEl) {
+        filterSpecialtyEl.onchange = () => {
+            renderDoctorView();
+        };
+    }
 }
 
 async function persistVault(keyInstance = AppState.activeKey) {
@@ -314,13 +358,18 @@ function renderPatientView() {
         const left = document.createElement('div');
         
         const titleContainer = document.createElement('div');
-        titleContainer.className = "flex items-center space-x-2";
+        titleContainer.className = "flex items-center space-x-2 flex-wrap";
 
         const title = document.createElement('h3');
         title.className = "med-title font-bold text-lg text-slate-900 dark:text-slate-100";
         title.textContent = med.name;
 
+        const specialtyBadge = document.createElement('span');
+        specialtyBadge.className = "px-2 py-0.5 rounded text-[10px] font-semibold bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200";
+        specialtyBadge.textContent = med.specialty || 'Autres-Généraliste';
+
         titleContainer.appendChild(title);
+        titleContainer.appendChild(specialtyBadge);
 
         if (isTaken) {
             const checkBadge = document.createElement('span');
@@ -390,11 +439,6 @@ function renderPatientView() {
     });
 
     el.dailyProgress.textContent = `${takenCount}/${AppState.medications.length} pris`;
-    // Exemple d'ajout d'un badge de spécialité sous le titre du médicament dans les cartes :
-const specialtyBadge = document.createElement('span');
-specialtyBadge.className = "ml-2 px-2 py-0.5 rounded text-[10px] font-semibold bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200";
-specialtyBadge.textContent = med.specialty || 'Généraliste';
-titleContainer.appendChild(specialtyBadge);
 }
 
 async function handlePatientToggleDose(medId, actionType) {
@@ -509,11 +553,6 @@ function renderHelperView() {
         item.appendChild(time);
         el.helperLogList.appendChild(item);
     });
-    // Exemple d'ajout d'un badge de spécialité sous le titre du médicament dans les cartes :
-const specialtyBadge = document.createElement('span');
-specialtyBadge.className = "ml-2 px-2 py-0.5 rounded text-[10px] font-semibold bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200";
-specialtyBadge.textContent = med.specialty || 'Généraliste';
-titleContainer.appendChild(specialtyBadge);
 }
 
 function renderDoctorView() {
@@ -531,7 +570,7 @@ function renderDoctorView() {
     // Filtrer les médicaments selon la spécialité sélectionnée
     const filteredMeds = AppState.medications.filter(med => {
         if (selectedFilter === 'ALL') return true;
-        return (med.specialty || 'Médecin Généraliste') === selectedFilter;
+        return (med.specialty || 'Autres-Généraliste') === selectedFilter;
     });
 
     if (filteredMeds.length === 0) {
@@ -557,7 +596,7 @@ function renderDoctorView() {
 
         const specialtyBadge = document.createElement('span');
         specialtyBadge.className = "px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200";
-        specialtyBadge.textContent = med.specialty || 'Médecin Généraliste';
+        specialtyBadge.textContent = med.specialty || 'Autres-Généraliste';
 
         titleRow.appendChild(title);
         titleRow.appendChild(specialtyBadge);
@@ -596,11 +635,11 @@ el.btnOpenAddMed.onclick = () => {
     AppState.targetEditId = null;
     el.medFormTitle.textContent = "Ajouter un médicament";
     el.formMed.reset();
-    el.modalMedForm.classList.remove('hidden');
+    openModal(el.modalMedForm);
 };
 
 el.btnCancelMedForm.onclick = () => {
-    el.modalMedForm.classList.add('hidden');
+    closeModal(el.modalMedForm);
 };
 
 function openEditMedModal(med) {
@@ -609,8 +648,16 @@ function openEditMedModal(med) {
     el.medName.value = med.name;
     el.medDosage.value = med.dosage;
     el.medTime.value = med.time;
+    document.getElementById('medSpecialty').value = med.specialty || 'Autres-Généraliste';
     el.medInstructions.value = med.instructions || '';
-    el.modalMedForm.classList.remove('hidden');
+    openModal(el.modalMedForm);
+}
+
+async function deleteMedication(medId) {
+    if (!AppState.isUnlocked) return;
+    AppState.medications = AppState.medications.filter(m => m.id !== medId);
+    await persistVault();
+    renderAll();
 }
 
 el.formMed.onsubmit = async (e) => {
@@ -622,7 +669,7 @@ el.formMed.onsubmit = async (e) => {
         name: el.medName.value.trim(),
         dosage: el.medDosage.value.trim(),
         time: el.medTime.value,
-        specialty: document.getElementById('medSpecialty').value, // <--- Nouvelle propriété
+        specialty: document.getElementById('medSpecialty').value,
         instructions: el.medInstructions.value.trim()
     };
 
@@ -634,18 +681,6 @@ el.formMed.onsubmit = async (e) => {
     }
 
     await persistVault();
-    el.modalMedForm.classList.add('hidden');
+    closeModal(el.modalMedForm);
     renderAll();
 };
-
-// N'oubliez pas de peupler le champ lors de l'édition d'un médicament :
-function openEditMedModal(med) {
-    AppState.targetEditId = med.id;
-    el.medFormTitle.textContent = "Modifier le médicament";
-    el.medName.value = med.name;
-    el.medDosage.value = med.dosage;
-    el.medTime.value = med.time;
-    document.getElementById('medSpecialty').value = med.specialty || 'Généraliste';
-    el.medInstructions.value = med.instructions || '';
-    el.modalMedForm.classList.remove('hidden');
-}
