@@ -113,7 +113,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setupNetworkListeners();
     setupEventListeners();
     registerServiceWorker();
-    initMedicationTimer(); // <-- Démarrage de la surveillance des rappels
+    initMedicationTimer(); // Surveillance des retards
 });
 
 function initCryptoSalt() {
@@ -250,6 +250,7 @@ function renderAll() {
     renderHelperView();
     renderDoctorView();
 }
+
 function renderPatientView() {
     el.patientMedList.textContent = '';
     if (!AppState.isUnlocked) {
@@ -270,7 +271,10 @@ function renderPatientView() {
         return;
     }
 
-    const todayStr = new Date().toISOString().split('T')[0];
+    const now = new Date();
+    const todayStr = now.toISOString().split('T')[0];
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
     let takenCount = 0;
 
     AppState.medications.forEach(med => {
@@ -284,71 +288,96 @@ function renderPatientView() {
 
         if (isTaken) takenCount++;
 
+        // Calcul du retard (> 30 minutes après l'heure prévue et non pris)
+        const [medH, medM] = med.time.split(':').map(Number);
+        const medMinutes = medH * 60 + medM;
+        const isOverdue = !isTaken && !isMissed && (currentMinutes - medMinutes >= 30);
+
+        // Style dynamique de toute la ligne (carte) avec surbrillance verte ou orange/jaune
         const card = document.createElement('div');
-        card.className = `med-card p-4 rounded-xl border transition-all duration-300 ${
+        card.className = `med-card p-4 rounded-xl border transition-all duration-300 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 ${
             isTaken 
-                ? 'border-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 dark:border-emerald-700 shadow-md scale-[1.01]' 
+                ? 'border-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 dark:border-emerald-600 shadow-md' 
                 : isMissed
                 ? 'border-rose-300 bg-rose-50/50 dark:bg-rose-950/20 dark:border-rose-800'
+                : isOverdue
+                ? 'border-amber-400 bg-amber-50 dark:bg-amber-950/40 dark:border-amber-600 animate-pulse'
                 : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900'
-        } flex flex-col md:flex-row items-start md:items-center justify-between gap-3`;
+        }`;
 
         const left = document.createElement('div');
         
+        const titleContainer = document.createElement('div');
+        titleContainer.className = "flex items-center space-x-2";
+
         const title = document.createElement('h3');
         title.className = "med-title font-bold text-lg text-slate-900 dark:text-slate-100";
         title.textContent = med.name;
 
-        const details = document.createElement('p');
-        details.className = "text-xs text-slate-500 dark:text-slate-400";
-        details.textContent = `${med.dosage} - Prise à ${med.time} (${med.instructions || 'Aucune instruction'})`;
+        titleContainer.appendChild(title);
 
-        left.appendChild(title);
+        if (isTaken) {
+            const checkBadge = document.createElement('span');
+            checkBadge.className = "text-emerald-600 dark:text-emerald-400 font-extrabold text-lg";
+            checkBadge.textContent = "✓";
+            titleContainer.appendChild(checkBadge);
+        } else if (isOverdue) {
+            const warningBadge = document.createElement('span');
+            warningBadge.className = "px-2 py-0.5 rounded text-[10px] bg-amber-200 dark:bg-amber-900 text-amber-800 dark:text-amber-200 font-bold uppercase";
+            warningBadge.textContent = "⚠️ En retard";
+            titleContainer.appendChild(warningBadge);
+        }
+
+        const details = document.createElement('p');
+        details.className = "text-xs text-slate-500 dark:text-slate-400 mt-1";
+        details.textContent = `${med.dosage} - Prise prévue à ${med.time} (${med.instructions || 'Aucune instruction'})`;
+
+        left.appendChild(titleContainer);
         left.appendChild(details);
 
         const actionsDiv = document.createElement('div');
         actionsDiv.className = "flex items-center space-x-2 w-full md:w-auto justify-end";
 
+        // Bouton Toggle : Clic 1 = Valider Pris, Clic 2 = Annuler (état initial)
+        const btnTake = document.createElement('button');
+        
         if (isTaken) {
-            // Bouton figé et validé avec effet visuel fort
-            const badgeTaken = document.createElement('div');
-            badgeTaken.className = "px-6 py-3 rounded-2xl text-sm font-extrabold bg-emerald-600 text-white shadow-md flex items-center space-x-2 animate-pulse";
-            badgeTaken.innerHTML = "<span>✓</span><span>DÉJÀ PRIS</span>";
-            actionsDiv.appendChild(badgeTaken);
-        } else if (isMissed) {
-            const badgeMissed = document.createElement('span');
-            badgeMissed.className = "px-4 py-2 rounded-xl text-xs font-bold bg-rose-600 text-white shadow-inner";
-            badgeMissed.textContent = "✕ MARQUÉ MANQUÉ";
-            actionsDiv.appendChild(badgeMissed);
+            btnTake.className = "px-6 py-3 rounded-2xl text-sm font-extrabold bg-emerald-600 hover:bg-emerald-700 text-white shadow-md flex items-center space-x-2 transition cursor-pointer";
+            btnTake.innerHTML = "<span>✓</span><span>DÉJÀ PRIS (ANNULER)</span>";
         } else {
-            const btnMiss = document.createElement('button');
-            btnMiss.className = "px-3 py-3 rounded-xl text-xs font-semibold bg-slate-200 dark:bg-slate-700 hover:bg-rose-100 text-slate-700 dark:text-slate-300 transition";
-            btnMiss.textContent = "Ignorer";
-            btnMiss.onclick = () => handlePatientMissDose(med);
-
-            // Bouton PRIS ultra visible et réactif
-            const btnTake = document.createElement('button');
-            btnTake.className = "px-6 py-3 rounded-2xl text-base font-extrabold shadow-lg transition-all transform active:scale-95 bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer flex items-center space-x-2";
+            btnTake.className = "px-6 py-3 rounded-2xl text-base font-extrabold shadow-md transition transform active:scale-95 bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer flex items-center space-x-2";
             btnTake.innerHTML = "<span>💊</span><span>PRENDRE</span>";
-            
-            btnTake.onclick = async () => {
-                // Feedback visuel immédiat avant l'écriture asynchrone
-                btnTake.disabled = true;
-                btnTake.className = "px-6 py-3 rounded-2xl text-base font-extrabold bg-emerald-500 text-white opacity-80 cursor-wait";
-                btnTake.innerHTML = "<span>⏳</span><span>ENREGISTREMENT...</span>";
-
-                // Vibration haptique du téléphone (si supportée par Android/Navigateur)
-                if ('vibrate' in navigator) {
-                    navigator.vibrate([100, 50, 100]);
-                }
-
-                await handlePatientTakeDose(med);
-            };
-
-            actionsDiv.appendChild(btnMiss);
-            actionsDiv.appendChild(btnTake);
         }
 
+        btnTake.onclick = async () => {
+            if ('vibrate' in navigator) navigator.vibrate(80);
+
+            if (isTaken) {
+                // CLIC 2 : Annulation (Retour à l'état initial)
+                await removeTodayLog(med.id);
+            } else {
+                // CLIC 1 : Validation de la prise
+                await handlePatientToggleDose(med.id, 'taken');
+            }
+        };
+
+        // Bouton Ignorer
+        if (!isTaken) {
+            const btnIgn = document.createElement('button');
+            btnIgn.className = `px-3 py-3 rounded-xl text-xs font-semibold transition ${
+                isMissed 
+                    ? 'bg-rose-600 text-white' 
+                    : 'bg-slate-200 dark:bg-slate-700 hover:bg-rose-100 text-slate-700 dark:text-slate-300'
+            }`;
+            btnIgn.textContent = isMissed ? "Ignoré" : "Ignorer";
+            btnIgn.onclick = async () => {
+                if ('vibrate' in navigator) navigator.vibrate(50);
+                await handlePatientToggleDose(med.id, isMissed ? 'cancel' : 'missed');
+            };
+            actionsDiv.appendChild(btnIgn);
+        }
+
+        actionsDiv.appendChild(btnTake);
         card.appendChild(left);
         card.appendChild(actionsDiv);
         el.patientMedList.appendChild(card);
@@ -357,39 +386,41 @@ function renderPatientView() {
     el.dailyProgress.textContent = `${takenCount}/${AppState.medications.length} pris`;
 }
 
-async function handlePatientTakeDose(med) {
+async function handlePatientToggleDose(medId, actionType) {
     const todayStr = new Date().toISOString().split('T')[0];
-    const alreadyTakenToday = AppState.logs.some(log => 
-        log.medId === med.id && 
-        log.action === 'taken' && 
-        log.timestamp.startsWith(todayStr)
-    );
 
-    if (alreadyTakenToday) {
-        return; // Sécurité anti-double clic bloquante silencieuse ou alerte
+    // Nettoyer tout ancien log du jour pour ce médicament pour repartir sur une base propre
+    AppState.logs = AppState.logs.filter(log => !(log.medId === medId && log.timestamp.startsWith(todayStr)));
+
+    if (actionType !== 'cancel') {
+        const med = AppState.medications.find(m => m.id === medId);
+        const logEntry = {
+            id: crypto.randomUUID(),
+            medId: med.id,
+            medName: med.name,
+            action: actionType,
+            timestamp: new Date().toISOString()
+        };
+        AppState.logs.push(logEntry);
+
+        if (!navigator.onLine) {
+            const queue = JSON.parse(localStorage.getItem('offline_queue') || '[]');
+            queue.push(logEntry);
+            localStorage.setItem('offline_queue', JSON.stringify(queue));
+        }
     }
 
-    await logDoseAction(med.id, 'taken');
+    await persistVault();
+    renderAll();
 }
 
-async function handlePatientMissDose(med) {
+async function removeTodayLog(medId) {
     const todayStr = new Date().toISOString().split('T')[0];
-    const existingLog = AppState.logs.find(log => 
-        log.medId === med.id && 
-        log.timestamp.startsWith(todayStr)
-    );
-
-    if (existingLog) {
-        alert(`Une action a déjà été enregistrée pour "${med.name}" aujourd'hui.`);
-        return;
-    }
-
-    const confirmMiss = confirm(`Voulez-vous vraiment marquer le médicament "${med.name}" (${med.dosage}) comme non pris / ignoré ? Une alerte sera transmise à l'aidant.`);
-    if (!confirmMiss) return;
-
-    await logDoseAction(med.id, 'missed');
-    alert(`Le médicament a été marqué comme manqué. L'aidant en a été informé.`);
+    AppState.logs = AppState.logs.filter(log => !(log.medId === medId && log.timestamp.startsWith(todayStr)));
+    await persistVault();
+    renderAll();
 }
+
 function renderHelperView() {
     el.helperLogList.textContent = '';
     const helperMissedList = document.getElementById('helperMissedList');
@@ -397,7 +428,6 @@ function renderHelperView() {
 
     const todayStr = new Date().toISOString().split('T')[0];
 
-    // Calculs statistiques
     const totalLogs = AppState.logs.length;
     const takenLogs = AppState.logs.filter(l => l.action === 'taken');
     const snoozedLogs = AppState.logs.filter(l => l.action === 'snoozed');
@@ -405,13 +435,11 @@ function renderHelperView() {
 
     const rate = totalLogs > 0 ? Math.round((takenLogs.length / totalLogs) * 100) : 100;
     
-
-    el.statAdherence.textContent = `${rate}%`;
-    el.statTaken.textContent = takenLogs.length;
+    if (el.statAdherence) el.statAdherence.textContent = `${rate}%`;
+    if (el.statTaken) el.statTaken.textContent = takenLogs.length;
     if (el.statSnoozed) el.statSnoozed.textContent = snoozedLogs.length;
     if (el.statMissed) el.statMissed.textContent = missedLogs.length;
 
-    // Rendu de la sous-liste des alertes manquées/ignorées du jour
     const todayIssues = AppState.logs.filter(l => 
         (l.action === 'missed' || l.action === 'snoozed') && 
         l.timestamp.startsWith(todayStr)
@@ -443,7 +471,6 @@ function renderHelperView() {
         }
     }
 
-    // Rendu de l'historique complet
     if (AppState.logs.length === 0) {
         const empty = document.createElement('p');
         empty.className = "text-slate-400 text-center py-4 text-xs";
@@ -459,7 +486,7 @@ function renderHelperView() {
         const label = document.createElement('span');
         let actionText = 'Pris';
         if (log.action === 'snoozed') actionText = 'Repoussé';
-        if (log.action === 'missed') actionText = 'Manqué';
+        if (log.action === 'missed') actionText = 'Ignoré/Manqué';
         
         label.textContent = `${log.medName} - ${actionText}`;
         
@@ -472,6 +499,7 @@ function renderHelperView() {
         el.helperLogList.appendChild(item);
     });
 }
+
 function renderDoctorView() {
     el.doctorMedList.textContent = '';
     if (!AppState.isUnlocked) {
@@ -519,29 +547,6 @@ function renderDoctorView() {
     });
 }
 
-async function logDoseAction(medId, action) {
-    const med = AppState.medications.find(m => m.id === medId);
-    if (!med) return;
-
-    const logEntry = {
-        id: crypto.randomUUID(),
-        medId: med.id,
-        medName: med.name,
-        action: action,
-        timestamp: new Date().toISOString()
-    };
-
-    AppState.logs.push(logEntry);
-    if (!navigator.onLine) {
-        const queue = JSON.parse(localStorage.getItem('offline_queue') || '[]');
-        queue.push(logEntry);
-        localStorage.setItem('offline_queue', JSON.stringify(queue));
-    }
-
-    await persistVault();
-    renderAll();
-}
-
 // Doctor Medication Management
 el.btnOpenAddMed.onclick = () => {
     if (!AppState.isUnlocked) return;
@@ -576,148 +581,3 @@ el.formMed.onsubmit = async (e) => {
         time: el.medTime.value,
         instructions: el.medInstructions.value.trim()
     };
-
-    if (AppState.targetEditId) {
-        const idx = AppState.medications.findIndex(m => m.id === AppState.targetEditId);
-        if (idx !== -1) AppState.medications[idx] = newMed;
-    } else {
-        AppState.medications.push(newMed);
-    }
-
-    await persistVault();
-    el.modalMedForm.classList.add('hidden');
-    renderAll();
-};
-
-async function deleteMedication(id) {
-    if (!AppState.isUnlocked) return;
-    AppState.medications = AppState.medications.filter(m => m.id !== id);
-    await persistVault();
-    renderAll();
-}
-
-// Accessibility & Themes
-function setupThemeAndZoom() {
-    el.btnThemeToggle.onclick = () => {
-        document.documentElement.classList.toggle('dark');
-    };
-
-    el.btnZoomToggle.onclick = () => {
-        document.documentElement.classList.toggle('font-zoom-active');
-    };
-}
-
-// Service Worker Isolation
-function registerServiceWorker() {
-    if ('serviceWorker' in navigator) {
-        const swCode = `
-            self.addEventListener('install', e => self.skipWaiting());
-            self.addEventListener('activate', e => e.waitUntil(clients.claim()));
-            self.addEventListener('fetch', e => {
-                e.respondWith(fetch(e.request).catch(() => new Response('Offline')));
-            });
-        `;
-        const blob = new Blob([swCode], { type: 'application/javascript' });
-        const blobUrl = URL.createObjectURL(blob);
-        navigator.serviceWorker.register(blobUrl).catch(() => {});
-    }
-}
-/**
- * Système de surveillance des retards (30 minutes après l'heure prévue)
- */
-function initMedicationTimer() {
-    // Vérification toutes les minutes (60 000 ms)
-    setInterval(() => {
-        if (!AppState.isUnlocked || AppState.medications.length === 0) return;
-        checkOverdueMedications();
-    }, 60000);
-}
-
-function checkOverdueMedications() {
-    const now = new Date();
-    const todayStr = now.toISOString().split('T')[0];
-    const currentHours = now.getHours();
-    const currentMinutes = now.getMinutes();
-    const currentTimeInMinutes = currentHours * 60 + currentMinutes;
-
-    AppState.medications.forEach(med => {
-        // med.time est au format "HH:MM"
-        const [medHours, medMinutes] = med.time.split(':').map(Number);
-        const medTimeInMinutes = medHours * 60 + medMinutes;
-
-        // Délai de 30 minutes dépassé ?
-        const diffMinutes = currentTimeInMinutes - medTimeInMinutes;
-        const isOverdue = diffMinutes >= 30 && diffMinutes <= 35; // Fenêtre de déclenchement
-
-        if (isOverdue) {
-            // Vérifier si une action (pris ou manqué) a déjà été enregistrée aujourd'hui
-            const alreadyHandled = AppState.logs.some(log => 
-                log.medId === med.id && 
-                log.timestamp.startsWith(todayStr)
-            );
-
-            // Dans la boucle de détection du retard :
-if (!alreadyHandled) {
-    triggerAlertAudio();
-    sendNativeNotification(
-        "⚠️ Alerte Médicament - Retard critique",
-        `Le traitement "${med.name}" (${med.dosage}) n'a pas été pris à l'heure prévue (${med.time}).`
-    );
-}
-        }
-    });
-}
-
-/**
- * Générateur de signal sonore via l'API Web Audio (Aucun fichier externe requis)
- */
-async function sendNativeNotification(title, bodyText) {
-    const hasPermission = await requestNotificationPermission();
-    if (!hasPermission) return;
-
-    // Utilisation du Service Worker si disponible (recommandé pour les PWA)
-    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-        const registration = await navigator.serviceWorker.ready;
-        registration.showNotification(title, {
-            body: bodyText,
-            icon: 'https://cdn-icons-png.flaticon.com/512/2965/2965567.png', // Icône de notification
-            badge: 'https://cdn-icons-png.flaticon.com/512/2965/2965567.png',
-            vibrate: [200, 100, 200], // Vibration haptique (si supportée)
-            tag: 'med-alert'
-        });
-    } else {
-        // Fallback standard direct
-        new Notification(title, {
-            body: bodyText,
-            icon: 'https://cdn-icons-png.flaticon.com/512/2965/2965567.png'
-        });
-    }
-}
-
-/**
- * Mise en surbrillance visuelle d'un retard dans l'interface
- */
-function markMedicationAsOverdueUI(med) {
-    // Optionnel : Notification visuelle ciblée
-    console.անlog(`Rappel critique : Le médicament ${med.name} est en retard de plus de 30 minutes.`);
-}
-/**
- * Demande l'autorisation d'afficher des notifications système natives
- */
-async function requestNotificationPermission() {
-    if (!('Notification' in window)) {
-        console.warn("Ce navigateur ne supporte pas les notifications desktop/mobiles.");
-        return false;
-    }
-
-    if (Notification.permission === 'granted') {
-        return true;
-    }
-
-    if (Notification.permission !== 'denied') {
-        const permission = await Notification.requestPermission();
-        return permission === 'granted';
-    }
-
-    return false;
-}
