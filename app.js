@@ -213,6 +213,12 @@ function setupEventListeners() {
             el.pinError.classList.remove('hidden');
         }
     };
+    const filterSpecialtyEl = document.getElementById('filterSpecialty');
+if (filterSpecialtyEl) {
+    filterSpecialtyEl.onchange = () => {
+        renderDoctorView();
+    };
+}
 }
 
 async function persistVault(keyInstance = AppState.activeKey) {
@@ -384,6 +390,11 @@ function renderPatientView() {
     });
 
     el.dailyProgress.textContent = `${takenCount}/${AppState.medications.length} pris`;
+    // Exemple d'ajout d'un badge de spécialité sous le titre du médicament dans les cartes :
+const specialtyBadge = document.createElement('span');
+specialtyBadge.className = "ml-2 px-2 py-0.5 rounded text-[10px] font-semibold bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200";
+specialtyBadge.textContent = med.specialty || 'Généraliste';
+titleContainer.appendChild(specialtyBadge);
 }
 
 async function handlePatientToggleDose(medId, actionType) {
@@ -498,6 +509,11 @@ function renderHelperView() {
         item.appendChild(time);
         el.helperLogList.appendChild(item);
     });
+    // Exemple d'ajout d'un badge de spécialité sous le titre du médicament dans les cartes :
+const specialtyBadge = document.createElement('span');
+specialtyBadge.className = "ml-2 px-2 py-0.5 rounded text-[10px] font-semibold bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200";
+specialtyBadge.textContent = med.specialty || 'Généraliste';
+titleContainer.appendChild(specialtyBadge);
 }
 
 function renderDoctorView() {
@@ -510,32 +526,59 @@ function renderDoctorView() {
         return;
     }
 
-    AppState.medications.forEach(med => {
+    const selectedFilter = document.getElementById('filterSpecialty')?.value || 'ALL';
+
+    // Filtrer les médicaments selon la spécialité sélectionnée
+    const filteredMeds = AppState.medications.filter(med => {
+        if (selectedFilter === 'ALL') return true;
+        return (med.specialty || 'Médecin Généraliste') === selectedFilter;
+    });
+
+    if (filteredMeds.length === 0) {
+        const msg = document.createElement('p');
+        msg.className = "text-slate-400 text-center py-4 text-sm";
+        msg.textContent = "Aucun médicament trouvé pour cette spécialité.";
+        el.doctorMedList.appendChild(msg);
+        return;
+    }
+
+    filteredMeds.forEach(med => {
         const card = document.createElement('div');
-        card.className = "med-card p-3 rounded-xl border border-slate-200 dark:border-slate-700 flex justify-between items-center";
+        card.className = "med-card p-3 rounded-xl border border-slate-200 dark:border-slate-700 flex flex-col md:flex-row justify-between items-start md:items-center gap-2";
 
         const info = document.createElement('div');
+        
+        const titleRow = document.createElement('div');
+        titleRow.className = "flex items-center space-x-2 flex-wrap";
+
         const title = document.createElement('h4');
         title.className = "med-title font-bold text-slate-800 dark:text-slate-200";
         title.textContent = `${med.name} (${med.dosage})`;
 
-        const sub = document.createElement('p');
-        sub.className = "text-xs text-slate-500";
-        sub.textContent = `Heure: ${med.time} | ${med.instructions || 'S.O.'}`;
+        const specialtyBadge = document.createElement('span');
+        specialtyBadge.className = "px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200";
+        specialtyBadge.textContent = med.specialty || 'Médecin Généraliste';
 
-        info.appendChild(title);
+        titleRow.appendChild(title);
+        titleRow.appendChild(specialtyBadge);
+
+        const sub = document.createElement('p');
+        sub.className = "text-xs text-slate-500 mt-1";
+        sub.textContent = `Heure: ${med.time} | ${med.instructions || 'Aucune instruction'}`;
+
+        info.appendChild(titleRow);
         info.appendChild(sub);
 
         const actions = document.createElement('div');
-        actions.className = "flex space-x-2";
+        actions.className = "flex space-x-2 self-end md:self-center";
 
         const btnEdit = document.createElement('button');
-        btnEdit.className = "px-2 py-1 bg-slate-200 dark:bg-slate-600 rounded text-xs font-semibold";
+        btnEdit.className = "px-2.5 py-1 bg-slate-200 dark:bg-slate-600 rounded text-xs font-semibold hover:bg-slate-300";
         btnEdit.textContent = "Modifier";
         btnEdit.onclick = () => openEditMedModal(med);
 
         const btnDelete = document.createElement('button');
-        btnDelete.className = "px-2 py-1 bg-rose-500 text-white rounded text-xs font-semibold hover:bg-rose-600";
+        btnDelete.className = "px-2.5 py-1 bg-rose-500 text-white rounded text-xs font-semibold hover:bg-rose-600";
         btnDelete.textContent = "Supprimer";
         btnDelete.onclick = () => deleteMedication(med.id);
 
@@ -579,5 +622,30 @@ el.formMed.onsubmit = async (e) => {
         name: el.medName.value.trim(),
         dosage: el.medDosage.value.trim(),
         time: el.medTime.value,
+        specialty: document.getElementById('medSpecialty').value, // <--- Nouvelle propriété
         instructions: el.medInstructions.value.trim()
     };
+
+    if (AppState.targetEditId) {
+        const idx = AppState.medications.findIndex(m => m.id === AppState.targetEditId);
+        if (idx !== -1) AppState.medications[idx] = newMed;
+    } else {
+        AppState.medications.push(newMed);
+    }
+
+    await persistVault();
+    el.modalMedForm.classList.add('hidden');
+    renderAll();
+};
+
+// N'oubliez pas de peupler le champ lors de l'édition d'un médicament :
+function openEditMedModal(med) {
+    AppState.targetEditId = med.id;
+    el.medFormTitle.textContent = "Modifier le médicament";
+    el.medName.value = med.name;
+    el.medDosage.value = med.dosage;
+    el.medTime.value = med.time;
+    document.getElementById('medSpecialty').value = med.specialty || 'Généraliste';
+    el.medInstructions.value = med.instructions || '';
+    el.modalMedForm.classList.remove('hidden');
+}
