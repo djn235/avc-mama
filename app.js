@@ -274,7 +274,6 @@ function renderPatientView() {
     let takenCount = 0;
 
     AppState.medications.forEach(med => {
-        // Vérifier si une action a déjà été enregistrée aujourd'hui pour ce médicament
         const todayLog = AppState.logs.find(log => 
             log.medId === med.id && 
             log.timestamp.startsWith(todayStr)
@@ -286,9 +285,9 @@ function renderPatientView() {
         if (isTaken) takenCount++;
 
         const card = document.createElement('div');
-        card.className = `med-card p-4 rounded-xl border transition-all ${
+        card.className = `med-card p-4 rounded-xl border transition-all duration-300 ${
             isTaken 
-                ? 'border-emerald-300 bg-emerald-50/50 dark:bg-emerald-950/20 dark:border-emerald-800' 
+                ? 'border-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 dark:border-emerald-700 shadow-md scale-[1.01]' 
                 : isMissed
                 ? 'border-rose-300 bg-rose-50/50 dark:bg-rose-950/20 dark:border-rose-800'
                 : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900'
@@ -307,14 +306,14 @@ function renderPatientView() {
         left.appendChild(title);
         left.appendChild(details);
 
-        // Conteneur des boutons d'action
         const actionsDiv = document.createElement('div');
         actionsDiv.className = "flex items-center space-x-2 w-full md:w-auto justify-end";
 
         if (isTaken) {
-            const badgeTaken = document.createElement('span');
-            badgeTaken.className = "px-4 py-2 rounded-xl text-xs font-bold bg-emerald-600 text-white shadow-inner";
-            badgeTaken.textContent = "✓ DÉJÀ PRIS";
+            // Bouton figé et validé avec effet visuel fort
+            const badgeTaken = document.createElement('div');
+            badgeTaken.className = "px-6 py-3 rounded-2xl text-sm font-extrabold bg-emerald-600 text-white shadow-md flex items-center space-x-2 animate-pulse";
+            badgeTaken.innerHTML = "<span>✓</span><span>DÉJÀ PRIS</span>";
             actionsDiv.appendChild(badgeTaken);
         } else if (isMissed) {
             const badgeMissed = document.createElement('span');
@@ -322,17 +321,29 @@ function renderPatientView() {
             badgeMissed.textContent = "✕ MARQUÉ MANQUÉ";
             actionsDiv.appendChild(badgeMissed);
         } else {
-            // Bouton Ignorer / Manqué
             const btnMiss = document.createElement('button');
-            btnMiss.className = "px-3 py-2.5 rounded-xl text-xs font-semibold bg-slate-200 dark:bg-slate-700 hover:bg-rose-100 dark:hover:bg-rose-950 text-slate-700 dark:text-slate-300 transition cursor-pointer";
+            btnMiss.className = "px-3 py-3 rounded-xl text-xs font-semibold bg-slate-200 dark:bg-slate-700 hover:bg-rose-100 text-slate-700 dark:text-slate-300 transition";
             btnMiss.textContent = "Ignorer";
             btnMiss.onclick = () => handlePatientMissDose(med);
 
-            // Bouton Pris
+            // Bouton PRIS ultra visible et réactif
             const btnTake = document.createElement('button');
-            btnTake.className = "px-5 py-2.5 rounded-xl text-sm font-bold shadow-sm transition active:scale-95 bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer";
-            btnTake.textContent = "PRIS";
-            btnTake.onclick = () => handlePatientTakeDose(med);
+            btnTake.className = "px-6 py-3 rounded-2xl text-base font-extrabold shadow-lg transition-all transform active:scale-95 bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer flex items-center space-x-2";
+            btnTake.innerHTML = "<span>💊</span><span>PRENDRE</span>";
+            
+            btnTake.onclick = async () => {
+                // Feedback visuel immédiat avant l'écriture asynchrone
+                btnTake.disabled = true;
+                btnTake.className = "px-6 py-3 rounded-2xl text-base font-extrabold bg-emerald-500 text-white opacity-80 cursor-wait";
+                btnTake.innerHTML = "<span>⏳</span><span>ENREGISTREMENT...</span>";
+
+                // Vibration haptique du téléphone (si supportée par Android/Navigateur)
+                if ('vibrate' in navigator) {
+                    navigator.vibrate([100, 50, 100]);
+                }
+
+                await handlePatientTakeDose(med);
+            };
 
             actionsDiv.appendChild(btnMiss);
             actionsDiv.appendChild(btnTake);
@@ -344,6 +355,21 @@ function renderPatientView() {
     });
 
     el.dailyProgress.textContent = `${takenCount}/${AppState.medications.length} pris`;
+}
+
+async function handlePatientTakeDose(med) {
+    const todayStr = new Date().toISOString().split('T')[0];
+    const alreadyTakenToday = AppState.logs.some(log => 
+        log.medId === med.id && 
+        log.action === 'taken' && 
+        log.timestamp.startsWith(todayStr)
+    );
+
+    if (alreadyTakenToday) {
+        return; // Sécurité anti-double clic bloquante silencieuse ou alerte
+    }
+
+    await logDoseAction(med.id, 'taken');
 }
 
 async function handlePatientMissDose(med) {
