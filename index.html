@@ -197,10 +197,20 @@
                         </select>
                     </div>
                 </div>
-                <div>
-                    <label for="medTime" class="block text-xs font-semibold mb-1">Heure de prise</label>
-                    <input type="time" id="medTime" required class="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-sm focus:ring-2 focus:ring-emerald-500">
-                </div>
+                <div class="grid grid-cols-2 gap-2">
+					<div>
+						<label class="block text-xs font-semibold mb-1">Fréquence</label>
+						<select id="medFrequency" class="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-sm focus:ring-2 focus:ring-emerald-500">
+							<option value="daily">Chaque jour (Quotidien)</option>
+							<option value="weekly">1 fois par semaine</option>
+							<option value="interval">Tous les X jours / Alterné</option>
+						</select>
+					</div>
+					<div>
+						<label class="block text-xs font-semibold mb-1">Heures de prise (ex: 08:00, 20:00)</label>
+						<input type="text" id="medTimes" required placeholder="08:00, 20:00" class="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-sm font-semibold font-mono focus:ring-2 focus:ring-emerald-500">
+					</div>
+				</div>
                 <div>
                     <label for="medInstructions" class="block text-xs font-semibold mb-1">Instructions / Remarques</label>
                     <input type="text" id="medInstructions" placeholder="ex: Pendant le repas" class="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-sm focus:ring-2 focus:ring-emerald-500">
